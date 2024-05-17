@@ -1,5 +1,5 @@
 # -*- mode: org; fill-column: 78; -*-
-# Time-stamp: <2024-05-17 22:43:01 krylon>
+# Time-stamp: <2024-05-17 22:53:16 krylon>
 #
 #+TAGS: internals(i) ui(u) bug(b) feature(f)
 #+TAGS: database(d) design(e), meditation(m)
@@ -27,8 +27,19 @@
    :COOKIE_DATA: todo recursive
    :VISIBILITY: children
    :END:
-** Bugs [0/0]
+** Bugs [0/4]
    :PROPERTIES:
    :COOKIE_DATA: todo recursive
    :VISIBILITY: children
    :END:
+*** TODO Linters to the rescue [0/3]
+    I wrote a Lisp interpreter in Python many years ago (2010, apparently),
+    and I am trying to copy some of the code, which makes the linters scream.
+    The old code was written for Python 2, so ... no surprise there.
+    So here's what I am going to do:
+**** TODO Pacify the linters
+     Fix everything the linters are barking at
+**** TODO Add type hints
+     Add type annotations, as far as possible and helpful
+**** TODO Testing
+     I should probably write some tests, too.
