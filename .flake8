@@ -1,0 +1,6 @@
+# Time-stamp: <2024-03-22 20:27:45 krylon>
+[flake8]
+max-line-length = 99
+exclude = test_example_feed.py
+per-file-ignores =
+                 test_example_feed: E501
