@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 15:41:49 krylon>
+# Time-stamp: <2024-05-18 17:05:33 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -19,16 +19,20 @@ krylisp.data
 
 import copy
 import re
-
 from collections import deque
-from typing import Generator
+from typing import Final, Generator
 
 from krylisp import error
+
+whitespace: Final[re.Pattern] = re.compile(r"\s+")
+blank: Final[re.Pattern] = re.compile(r"^\s*$")
 
 
 def qw(s: str) -> list[str]:
     """Split a string by whitespace"""
-    return re.split(r"\s+", s)
+    if blank.match(s) is not None:
+        return []
+    return whitespace.split(s)
 
 
 def listp(x) -> bool:

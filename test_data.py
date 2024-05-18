@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 15:46:14 krylon>
+# Time-stamp: <2024-05-18 16:50:16 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -30,6 +30,8 @@ class TestBasics(unittest.TestCase):
         """Test the function qw"""
         test_cases: Final[list[tuple[str, list[str]]]] = [
             ("a b c", ["a", "b", "c"]),
+            ("", []),
+            ("abobo macht kinder froh", ["abobo", "macht", "kinder", "froh"]),
         ]
 
         for c in test_cases:
