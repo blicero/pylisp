@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 17:05:33 krylon>
+# Time-stamp: <2024-05-18 17:34:53 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -20,7 +20,7 @@ krylisp.data
 import copy
 import re
 from collections import deque
-from typing import Final, Generator
+from typing import Any, Final, Generator, Optional, Union
 
 from krylisp import error
 
@@ -40,6 +40,44 @@ def listp(x) -> bool:
     return isinstance(x, ConsCell) or (x is None)
 
 
+# Wenn ich Zahlen als Atome darstellen will, sollte ich sicherstellen, dass
+# die gleich beim Erzeugen des Atoms geparst werden und die auch bei Vergleichen
+# mit berücksichtigen.
+class Atom:
+    """An Atom is a number or a symbol, the basic building block of Lisp data"""
+    __slots__ = ['value']
+
+    def __init__(self, value):
+        assert isinstance(value, str)
+        if int_re.match(value) is not None:
+            self.value = int(value)
+        elif float_re.match(value) is not None:
+            self.value = float(value)
+        else:
+            self.value = value.lower()
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Atom):
+            return self.value == other.value
+        if isinstance(other, str):
+            return self.value == other.lower()
+        if self.value == 'nil':
+            return nullp(other)
+        return False
+
+    def __hash__(self):
+        return self.value.__hash__()
+
+    def __str__(self):
+        return f"#<Atom {self.value} >"
+
+    def __repr__(self):
+        return f"#<Atom {self.value} >"
+
+    def __nonzero__(self):
+        return self != 'nil'
+
+
 # Ich muss mur noch einmal Gedanken über die Darstellung von nil machen... ;-/
 # Eine ConsCell mit den Membern None und None wäre die naheliegende Lösung,
 # aber wie stelle ich dann eine Liste mit einer leeren Liste als Element dar?
@@ -47,6 +85,9 @@ class ConsCell:
     """ConsCells are the backbone of Lisp, so to speak."""
 
     __slots__ = ['head', 'tail']
+
+    head: Union[None, Atom, 'ConsCell']
+    tail: Optional['ConsCell']
 
     def __init__(self, car, cdr) -> None:
         # assert listp(cdr)
@@ -66,7 +107,7 @@ class ConsCell:
         return cnt
 
     def __iter__(self) -> Generator:
-        x = self
+        x: Optional['ConsCell'] = self
         while x is not None:
             if isinstance(x, ConsCell):
                 yield x.head
@@ -113,7 +154,7 @@ class ConsCell:
     # Man kann in Python statische Methoden schreiben, indem man die mit
     # @staticmethod dekoriert.
     @staticmethod
-    def fromList(lst):
+    def fromList(lst) -> 'ConsCell':
         """Create a list that is a deep copy of the parameter"""
         assert isinstance(lst, (list, tuple, ConsCell)), \
             f"lst must be a list, not a {lst.__class__}"
@@ -129,11 +170,11 @@ class ConsCell:
             return ConsCell(None, None)
         return res
 
-    def car(self):
+    def car(self) -> Any:
         """Return the head of the list."""
         return self.head
 
-    def cdr(self):
+    def cdr(self) -> 'ConsCell':
         """Return the tail of the list"""
         if self.tail is None:
             return ConsCell(None, None)
@@ -143,7 +184,7 @@ class ConsCell:
 # Streng genommen wäre NIL ja die leere Liste und nicht None, aber ... wenn ich
 # das mache, verhält sich das ganze Ding auf einmal komisch...
 NIL = None  # ConsCell(None, None)
-EMPTY_LIST = ConsCell(None, None)
+EMPTY_LIST: Final[ConsCell] = ConsCell(None, None)
 
 
 def cons(a, b) -> ConsCell:
@@ -170,44 +211,6 @@ def nullp(x) -> bool:
 
 int_re = re.compile(r"^-?d+$")
 float_re = re.compile(r"^-?\d+(?:[.]\d+)(?:e-?\d+)?")
-
-
-# Wenn ich Zahlen als Atome darstellen will, sollte ich sicherstellen, dass
-# die gleich beim Erzeugen des Atoms geparst werden und die auch bei Vergleichen
-# mit berücksichtigen.
-class Atom:
-    """An Atom is a number or a symbol, the basic building block of Lisp data"""
-    __slots__ = ['value']
-
-    def __init__(self, value):
-        assert isinstance(value, str)
-        if int_re.match(value) is not None:
-            self.value = int(value)
-        elif float_re.match(value) is not None:
-            self.value = float(value)
-        else:
-            self.value = value.lower()
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, Atom):
-            return self.value == other.value
-        if isinstance(other, str):
-            return self.value == other.lower()
-        if self.value == 'nil':
-            return nullp(other)
-        return False
-
-    def __hash__(self):
-        return self.value.__hash__()
-
-    def __str__(self):
-        return f"#<Atom {self.value} >"
-
-    def __repr__(self):
-        return f"#<Atom {self.value} >"
-
-    def __nonzero__(self):
-        return self != 'nil'
 
 
 class Environment:
