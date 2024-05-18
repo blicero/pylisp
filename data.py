@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 19:12:59 krylon>
+# Time-stamp: <2024-05-18 20:48:06 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -26,6 +26,8 @@ from krylisp import error
 
 whitespace: Final[re.Pattern] = re.compile(r"\s+")
 blank: Final[re.Pattern] = re.compile(r"^\s*$")
+int_re: Final[re.Pattern] = re.compile(r"^-?\d+$")
+float_re: Final[re.Pattern] = re.compile(r"^-?\d+(?:[.]\d+)(?:e-?\d+)?$")
 
 
 def qw(s: str) -> list[str]:
@@ -210,10 +212,6 @@ def nullp(x) -> bool:
     if isinstance(x, ConsCell):
         return not bool(x)
     return x is NIL
-
-
-int_re = re.compile(r"^-?d+$")
-float_re = re.compile(r"^-?\d+(?:[.]\d+)(?:e-?\d+)?")
 
 
 class Environment:

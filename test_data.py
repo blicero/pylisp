@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 19:20:16 krylon>
+# Time-stamp: <2024-05-18 20:50:38 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -57,6 +57,9 @@ class TestAtom(unittest.TestCase):
         """Test checking for equality"""
         test_cases: Final[list[tuple[data.Atom, Any, bool]]] = [
             (data.Atom("peter"), "peter", True),
+            (data.Atom("PETER"), data.Atom("peter"), True),
+            (data.Atom("32"), data.Atom("32.0"), True),
+            (data.Atom("PETER"), data.Atom("3"), False),
         ]
 
         for c in test_cases:
