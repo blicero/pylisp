@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 16:50:16 krylon>
+# Time-stamp: <2024-05-18 19:20:16 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -18,7 +18,7 @@ krylisp.test_data
 """
 
 import unittest
-from typing import Final
+from typing import Any, Final
 
 from krylisp import data
 
@@ -37,6 +37,30 @@ class TestBasics(unittest.TestCase):
         for c in test_cases:
             result = data.qw(c[0])
             self.assertEqual(result, c[1])
+
+    def test_02_listp(self) -> None:
+        """Test listp"""
+        test_cases: Final[list[tuple[Any, bool]]] = [
+            (None, True),
+            (data.ConsCell(data.Atom("3"), None), True),
+            ("Abobo", False)
+        ]
+
+        for c in test_cases:
+            self.assertEqual(data.listp(c[0]), c[1])
+
+
+class TestAtom(unittest.TestCase):
+    """Test Atoms"""
+
+    def test_01_eq(self) -> None:
+        """Test checking for equality"""
+        test_cases: Final[list[tuple[data.Atom, Any, bool]]] = [
+            (data.Atom("peter"), "peter", True),
+        ]
+
+        for c in test_cases:
+            self.assertEqual(c[0] == c[1], c[2])
 
 # Local Variables: #
 # python-indent: 4 #

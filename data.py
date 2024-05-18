@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 17:34:53 krylon>
+# Time-stamp: <2024-05-18 19:12:59 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -35,7 +35,7 @@ def qw(s: str) -> list[str]:
     return whitespace.split(s)
 
 
-def listp(x) -> bool:
+def listp(x: Any) -> bool:
     """Return True if x is a Lisp list"""
     return isinstance(x, ConsCell) or (x is None)
 
@@ -47,7 +47,9 @@ class Atom:
     """An Atom is a number or a symbol, the basic building block of Lisp data"""
     __slots__ = ['value']
 
-    def __init__(self, value):
+    value: Union[str, int, float]
+
+    def __init__(self, value: str):
         assert isinstance(value, str)
         if int_re.match(value) is not None:
             self.value = int(value)
@@ -89,17 +91,18 @@ class ConsCell:
     head: Union[None, Atom, 'ConsCell']
     tail: Optional['ConsCell']
 
-    def __init__(self, car, cdr) -> None:
+    def __init__(self, car: Union[None, Atom, 'ConsCell'], cdr: Optional['ConsCell']) -> None:
         # assert listp(cdr)
         self.head = car
         self.tail = cdr
 
     def __len__(self) -> int:
-        cnt = 1
-        node = self
+        cnt: int = 1
+        node: ConsCell = self
         while node.tail is not None:
             cnt += 1
-            if isinstance(node.tail, ConsCell):
+            # if isinstance(node.tail, ConsCell):
+            if node.tail is not None:
                 node = node.tail
             else:
                 break
