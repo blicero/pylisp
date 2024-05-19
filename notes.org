@@ -1,5 +1,5 @@
 # -*- mode: org; fill-column: 78; -*-
-# Time-stamp: <2024-05-19 17:05:53 krylon>
+# Time-stamp: <2024-05-19 21:18:10 krylon>
 #
 #+TAGS: internals(i) ui(u) bug(b) feature(f)
 #+TAGS: database(d) design(e), meditation(m)
@@ -12,14 +12,14 @@
   A naive Lisp interpreter, written in Python.
 ** Clocktable
    #+BEGIN: clocktable :scope file :maxlevel 255 :emphasize t
-   #+CAPTION: Clock summary at [2024-05-19 So 17:05]
+   #+CAPTION: Clock summary at [2024-05-19 So 21:18]
    | Headline               | Time   |        |      |
    |------------------------+--------+--------+------|
-   | *Total time*           | *1:09* |        |      |
+   | *Total time*           | *4:54* |        |      |
    |------------------------+--------+--------+------|
-   | *kryLisp*              | *1:09* |        |      |
-   | \_  /Components [0/1]/ |        | /1:09/ |      |
-   | \_    Parser           |        |        | 1:09 |
+   | *kryLisp*              | *4:54* |        |      |
+   | \_  /Components [0/1]/ |        | /4:54/ |      |
+   | \_    Parser           |        |        | 4:54 |
    #+END:
 ** Features [0/0]
    :PROPERTIES:
@@ -33,6 +33,7 @@
    :END:
 *** TODO Parser
     :LOGBOOK:
+    CLOCK: [2024-05-19 So 17:33]--[2024-05-19 So 21:18] =>  3:45
     CLOCK: [2024-05-19 So 15:56]--[2024-05-19 So 17:05] =>  1:09
     :END:
 ** Bugs [0/4]
