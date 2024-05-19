@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 20:48:06 krylon>
+# Time-stamp: <2024-05-19 09:54:05 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -197,13 +197,13 @@ def cons(a, b) -> ConsCell:
     return ConsCell(a, b)
 
 
-def cadr(x):
+def cadr(x: ConsCell) -> Any:
     """Return the second element of the list."""
     assert listp(x) and isinstance(x.cdr(), ConsCell)
     return x.cdr().car()
 
 
-def nullp(x) -> bool:
+def nullp(x: Union[Atom, None, ConsCell]) -> bool:
     """Return True if x is nil"""
     if isinstance(x, Atom):
         return "nil" == x.value
@@ -219,20 +219,25 @@ class Environment:
 
     __slots__ = ['data', 'parent', 'level']
 
-    def __init__(self, parent=None, initial_values=None):
-        if initial_values is None:
-            initial_values = {}
+    data: dict
+    parent: Optional['Environment']
+    level: int
+
+    def __init__(self, parent: Optional['Environment'] = None, init: Optional[dict] = None) -> None:  # noqa: E501, pylint: disable-msg=C0301
+        if init is None:
+            init = {}
         assert (parent is None) or isinstance(parent, (dict, Environment))
-        assert isinstance(initial_values, dict)
+        assert isinstance(init, dict)
         self.parent = parent
         self.data = {}
-        for sym, val in initial_values.items():
+        for sym, val in init.items():
             self.data[sym.value if isinstance(sym, Atom) else sym] = val
         self.level = 0 if (parent is None) else parent.level + 1
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: Union[str, Atom]) -> Any:
         lookup_key = key
         if isinstance(key, Atom):
+            assert isinstance(key.value, str)
             lookup_key = key.value
         try:
             if lookup_key in self.data:
@@ -249,16 +254,17 @@ class Environment:
     # Dafür müsste ich erst nachsehen, welches das "top-most" environment ist,
     # in dem eine Variable mit dem angegebenen Namen existiert, und die dann
     # darin speichern...
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Union[str, Atom], value) -> None:
         assert isinstance(key, (Atom, str))
 
         if isinstance(key, Atom):
+            assert isinstance(key.value, str)
             key = key.value
 
         #  print(f"Setting variable {key} to {value}")
 
         # Nein, das ist falsch...
-        env = self
+        env: Environment = self
         while (env.parent is not None) and (key not in env.data):
             # print("Going up one level to")
             env = env.parent
@@ -271,18 +277,18 @@ class Environment:
             # print(f"Updating variable {key} in environment {self.data}")
             self.data[key] = value
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         if key in self.data:
             return True
 
-        parent = self.parent
+        parent: Optional[Environment] = self.parent
         while parent is not None:
             if key in parent:
                 return True
             parent = parent.parent
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         env = copy.copy(self.data)
         p = self.parent
         while p is not None:
@@ -292,14 +298,14 @@ class Environment:
             p = p.parent
         return str(env)
 
-    def get_global(self):
+    def get_global(self) -> 'Environment':
         """Get the upmost enclosing Environment (i.e. the global environment)"""
         env = self
         while env.parent is not None:
             env = env.parent
         return env
 
-    def get_depth(self):
+    def get_depth(self) -> int:
         """Return the depth of nested Environments"""
         return self.level
 
@@ -307,7 +313,7 @@ class Environment:
 class Function:
     """A Function is a callable code object"""
 
-    def __init__(self, args, body, environment):
+    def __init__(self, args, body, environment) -> None:
         assert isinstance(environment, (dict, Environment))
         assert isinstance(args, (list, tuple, ConsCell))
         assert isinstance(body, ConsCell)
