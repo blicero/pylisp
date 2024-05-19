@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-17 22:10:16 krylon>
+# Time-stamp: <2024-05-19 21:53:35 krylon>
 #
 # /data/code/python/krylisp/common.py
 # created on 17. 05. 2024
@@ -60,8 +60,11 @@ class Path:
         self.__base = root
 
     def base(self, folder: str = "") -> str:
-        """Return the base directory for application specific files.
-        If path is a non-empty string, set the base directory to its value."""
+        """
+        Return the base directory for application specific files.
+
+        If path is a non-empty string, set the base directory to its value.
+        """
         if folder != "":
             self.__base = folder
         return self.__base

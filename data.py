@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 21:11:19 krylon>
+# Time-stamp: <2024-05-19 21:56:43 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -47,6 +47,7 @@ def listp(x: Any) -> bool:
 # mit berücksichtigen.
 class Atom:
     """An Atom is a number or a symbol, the basic building block of Lisp data"""
+
     __slots__ = ['value']
 
     value: Union[str, int, float]
@@ -330,7 +331,7 @@ class Function:
 
     # Eigentlich muss ich noch dingsen...
     def __call__(self, *args):
-        pass
+        """Call the function with the given arguments"""
 
 
 # Local Variables: #

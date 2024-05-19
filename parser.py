@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 21:14:59 krylon>
+# Time-stamp: <2024-05-19 21:56:32 krylon>
 #
 # /data/code/python/krylisp/parser.py
 # created on 19. 05. 2024
@@ -101,13 +101,19 @@ class SyntaxException(ParseError):
 
 
 class IncompleteException(ParseError):
-    """IncompleteException indicates that the parsed code is incomplete,
-    e.g. contains an unmatch open parenthesis."""
+    """
+    IncompleteException indicates that the parsed code is incomplete.
+
+    An example would be an unmatched open parenthesis.
+    """
 
 
 def result_to_list(r) -> data.ConsCell:
-    """Return the argument r as a Lisp list.
-    Atoms and numbers are returned verbatim."""
+    """
+    Return the argument r as a Lisp list.
+
+    Atoms and numbers are returned verbatim.
+    """
     # print "result_to_list({0.__class__}({0}))".format(r)
     lst = []
     if isinstance(r, (list, tuple)):
@@ -131,7 +137,7 @@ def result_to_list(r) -> data.ConsCell:
 
 
 def quote_body(head, body) -> data.ConsCell:
-    """Returns a list consisting of the head verbatim and the body quoted"""
+    """Return a list consisting of the head verbatim and the body quoted"""
     return data.ConsCell(head,
                          data.ConsCell(body, None)
                          if not isinstance(body, data.ConsCell)
