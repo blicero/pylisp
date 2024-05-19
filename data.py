@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 09:54:05 krylon>
+# Time-stamp: <2024-05-19 17:00:22 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -51,13 +51,16 @@ class Atom:
 
     value: Union[str, int, float]
 
-    def __init__(self, value: str):
+    def __init__(self, value: Union[str, int, float]):
         assert isinstance(value, str)
-        if int_re.match(value) is not None:
+        if isinstance(value, (int, float)):
+            self.value = value
+        elif int_re.match(value) is not None:
             self.value = int(value)
         elif float_re.match(value) is not None:
             self.value = float(value)
         else:
+            assert isinstance(value, str)
             self.value = value.lower()
 
     def __eq__(self, other) -> bool:
@@ -93,7 +96,9 @@ class ConsCell:
     head: Union[None, Atom, 'ConsCell']
     tail: Optional['ConsCell']
 
-    def __init__(self, car: Union[None, Atom, 'ConsCell'], cdr: Optional['ConsCell']) -> None:
+    def __init__(self,
+                 car: Union[None, Atom, 'ConsCell'],
+                 cdr: Optional['ConsCell']) -> None:
         # assert listp(cdr)
         self.head = car
         self.tail = cdr
