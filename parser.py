@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 17:04:43 krylon>
+# Time-stamp: <2024-05-19 21:14:59 krylon>
 #
 # /data/code/python/krylisp/parser.py
 # created on 19. 05. 2024
@@ -92,11 +92,15 @@ if DEBUG_GRAMMAR:
         xpr.setDebug(True)
 
 
-class SyntaxException(Exception):
+class ParseError(Exception):
+    """Base class for errors that occur in the parser"""
+
+
+class SyntaxException(ParseError):
     """A SyntaxException is raised when the parsers encounters a malformed program"""
 
 
-class IncompleteException(Exception):
+class IncompleteException(ParseError):
     """IncompleteException indicates that the parsed code is incomplete,
     e.g. contains an unmatch open parenthesis."""
 
@@ -166,15 +170,27 @@ def parse_string(s: str, dbg: bool = False) -> Any:
         print(err)
         raise SyntaxException() from err
 
+    if len(res) == 1:
+        if dbg:
+            print(f"{res[0].__class__}: {res[0]}")
+        return data.Atom(res[0])
+
     if isinstance(res, (str, data.ConsCell, data.Atom)):
+        if dbg:
+            print(f"Return a single value: {res}")
         return res
     if len(res) == 0:
-        raise IncompleteException("Incomplete expression!")
+        # raise IncompleteException("Incomplete expression!")
+        return data.Atom('nil')
 
     if dbg:
         print(res.__class__, "(", len(res), ") ->", res)
+
     try:
-        return result_to_list(res if len(res) > 1 else res[0])
+        # return result_to_list(res if len(res) > 1 else res[0])
+        if len(res) <= 1:
+            return res
+        return result_to_list(res)
     except TypeError as terr:
         print("TypeError:", terr)
         return res if len(res) > 1 else res[0]
