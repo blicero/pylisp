@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-18 20:50:38 krylon>
+# Time-stamp: <2024-05-19 18:53:57 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -60,6 +60,7 @@ class TestAtom(unittest.TestCase):
             (data.Atom("PETER"), data.Atom("peter"), True),
             (data.Atom("32"), data.Atom("32.0"), True),
             (data.Atom("PETER"), data.Atom("3"), False),
+            (data.Atom("31"), data.Atom(31), True),
         ]
 
         for c in test_cases:

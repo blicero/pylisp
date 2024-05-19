@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 17:00:22 krylon>
+# Time-stamp: <2024-05-19 21:11:19 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -51,10 +51,11 @@ class Atom:
 
     value: Union[str, int, float]
 
-    def __init__(self, value: Union[str, int, float]):
-        assert isinstance(value, str)
+    def __init__(self, value: Union[str, int, float, 'Atom']) -> None:
         if isinstance(value, (int, float)):
             self.value = value
+        elif isinstance(value, Atom):
+            self.value = value.value
         elif int_re.match(value) is not None:
             self.value = int(value)
         elif float_re.match(value) is not None:
