@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-20 16:37:36 krylon>
+# Time-stamp: <2025-03-07 22:24:06 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -23,9 +23,10 @@ import sys
 import time
 import traceback
 from functools import reduce
-from typing import Final
+from typing import Any, Final, Union
 
 from krylib import even, moan
+
 from krylisp import data, error, parser
 
 # Donnerstag, 07. 10. 2010, 22:03
@@ -115,7 +116,7 @@ class LispInterpreter:
     #
     # Freitag, 08. 10. 2010, 01:36
     # Ich glaube, ich muss progn als special form implementieren!!!
-    def eval_list(self, lst, env=None):
+    def eval_list(self, lst, env=None) -> Union[data.Atom, data.ConsCell, data.Function, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
         self.dbg("Evaluating list {0}", lst)
@@ -125,6 +126,7 @@ class LispInterpreter:
 
         if data.nullp(lst):
             return data.EMPTY_LIST
+
         if isinstance(lst, data.ConsCell):
             if lst.car() == '+':
                 return sum(self.eval_expr(x, env) for x in lst.cdr())
@@ -247,8 +249,7 @@ class LispInterpreter:
                 arg = self.eval_expr(lst[1], env)
                 if isinstance(arg, (data.Atom, int, float)) or data.nullp(arg):
                     return data.Atom('t')
-                else:
-                    return data.Atom('nil')
+                return data.Atom('nil')
             if lst.car() == 'lambda':
                 return lst
             if lst.car() == 'defun':
@@ -268,7 +269,7 @@ class LispInterpreter:
                 return self.eval_backquote(lst, env)
             if lst.car() == 'gensym':
                 self.gensym_counter += 1
-                return "#:{0:-012d}".format(self.gensym_counter)
+                return f"#:{self.gensym_counter:-012d}"
             if lst.car() == 'let':
                 let_env = {}
                 for symbol, value in lst[1]:
@@ -292,8 +293,7 @@ class LispInterpreter:
                     lst = lst.cdr()
                     if not isinstance(sym, data.Atom):
                         raise error.LispError(f"{sym} is not a symbol!")
-                    else:
-                        env[sym] = self.eval_expr(val, env)
+                    env[sym] = self.eval_expr(val, env)
                 return val
             if lst.car() == 'apply':
                 assert len(lst) == 3, "Apply takes exactly two arguments (function and arglist)!"
@@ -350,105 +350,99 @@ class LispInterpreter:
                 self.dbg("Setting debug flag to {0}", arg)
                 self.debug = not data.nullp(arg)
                 return data.Atom('t') if self.debug else data.Atom('nil')
-            # Hier kommen bestimmt noch eine Reihe anderer Sonderfälle hinzu...
-            else:
-                # Wenn wir hier ankommen, ist das wohl ein Funktionsaufruf...
-                # Ich habe so die Idee, dass ich eine Kombination aus den
-                # Konventionen für Common Lisp und Scheme verwende:
-                # Das erste Element wird genau so interpretiert wie alle anderen
-                # Elemente in der Liste, ABER alle Parameter werden von links
-                # nach rechts ausgewertet.
-                # Dafür brauche ich eigentlich so etwas wie map, nur dass eine
-                # verkettete Liste anstelle einer normalen Python-Liste zurück
-                # kommen muss.
-                # Das könnte ich natürlich erstmal faken...
-                # Mmmh, damit Makros richtig funktionieren, darf ich nicht alle
-                # Argumente evaluieren, bevor dingsen...
-                op = self.eval_expr(lst[0], env)
-                if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Atom)):
-                    return lst
-                elif op[0] == 'lambda':
-                    arg_list = data.ConsCell.fromList(
-                        [self.eval_expr(x, env) for x in lst.cdr()]) \
-                        if not data.nullp(lst.cdr()) \
-                        else data.ConsCell(None, None)
-                    # Okay, arg_list ist also die Liste der formalen Parameter.
-                    formal_args = op[1]
-                    arg_dict = {}
-                    # Ich müsste hier irgendwie mit &rest-Argumenten zurecht kommen...
-                    # Dafür müsste ich aber meine Schleife anders gestalten...
-                    # for arg_name, arg_val in map(lambda x,y: (x,y), formal_args, arg_list):
-                    #     #if arg_name == '&rest':
-                    #     arg_dict[arg_name] = eval_expr(arg_val, env)
-                    while not (data.nullp(formal_args) or data.nullp(arg_list)):
-                        arg_name = formal_args.car()
-                        if arg_name == '&rest':
-                            arg_dict[formal_args[1]] = arg_list
-                            formal_args = None
-                            break
-                        else:
-                            arg_dict[arg_name] = arg_list.car()
-                            arg_list = arg_list.cdr()
-                            formal_args = formal_args.cdr()
 
-                    # Dann muss ich jetzt das neue Environment aus den Parametern
-                    # erzeugen und dann den Funktionskörper auswerten...
-                    funcall_env = data.Environment(env, arg_dict)
-                    if not data.nullp(formal_args):
-                        raise error.LispError(
-                            "arg list is shorter than the list of formal arguments!")
-                    else:
-                        self.dbg("Function call environment is {0}", funcall_env)
-                    self.dbg("Local environment for function call: {0}", funcall_env.data)
-                    res = None
-                    for expr in op.cdr().cdr():
-                        res = self.eval_expr(expr, funcall_env)
-                        self.dbg("Sub-expression {0} evaluates to {1}", expr, res)
-                        if isinstance(expr, data.ConsCell) and expr[0] == 'return':
-                            break
-                    return res
-                elif op[0] == 'macro':
-                    # Hier muss ich zwei Mal evaluieren, einmal, um das Macro zu
-                    # expandieren, und einmal, um den resultierenden Code zu
-                    # evaluieren. Mmmmh...
-                    expand_dict = {}
-                    formal_args = op[1]
-                    arg_list = lst.cdr()
-                    while not data.nullp(formal_args):
-                        arg_name = formal_args.car()
-                        if arg_name == '&rest' or arg_name == '&body':
-                            expand_dict[formal_args[1]] = arg_list
-                            break
-                        else:
-                            expand_dict[arg_name] = arg_list.car()
-                            arg_list = arg_list.cdr()
-                            formal_args = formal_args.cdr()
-                    macro_env = data.Environment(env, expand_dict)
-                    res = []
+            # Ich habe so die Idee, dass ich eine Kombination aus den
+            # Konventionen für Common Lisp und Scheme verwende:
+            # Das erste Element wird genau so interpretiert wie alle anderen
+            # Elemente in der Liste, ABER alle Parameter werden von links
+            # nach rechts ausgewertet.
+            # Dafür brauche ich eigentlich so etwas wie map, nur dass eine
+            # verkettete Liste anstelle einer normalen Python-Liste zurück
+            # kommen muss.
+            # Das könnte ich natürlich erstmal faken...
+            # Mmmh, damit Makros richtig funktionieren, darf ich nicht alle
+            # Argumente evaluieren, bevor dingsen...
+            op = self.eval_expr(lst[0], env)
+            if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Atom)):
+                return lst
+            if op[0] == 'lambda':
+                arg_list = data.ConsCell.fromList(
+                    [self.eval_expr(x, env) for x in lst.cdr()]) \
+                    if not data.nullp(lst.cdr()) \
+                    else data.ConsCell(None, None)
+                # Okay, arg_list ist also die Liste der formalen Parameter.
+                formal_args = op[1]
+                arg_dict = {}
+                # Ich müsste hier irgendwie mit &rest-Argumenten zurecht kommen...
+                # Dafür müsste ich aber meine Schleife anders gestalten...
+                # for arg_name, arg_val in map(lambda x,y: (x,y), formal_args, arg_list):
+                #     #if arg_name == '&rest':
+                #     arg_dict[arg_name] = eval_expr(arg_val, env)
+                while not (data.nullp(formal_args) or data.nullp(arg_list)):
+                    arg_name = formal_args.car()
+                    if arg_name == '&rest':
+                        arg_dict[formal_args[1]] = arg_list
+                        formal_args = None
+                        break
+                    arg_dict[arg_name] = arg_list.car()
+                    arg_list = arg_list.cdr()
+                    formal_args = formal_args.cdr()
 
-                    # Jaaaa, hier muss ich wieder darauf auchten, dass die
-                    # evaluierten Ausdrücke vermutlich Listen sind, und dass ich
-                    # die nicht ohne weiteres an einander consen kann...
-                    # for stmt in reversed(op.cdr().cdr()):
-                    #     res = data.ConsCell(eval_macro_expr(stmt, macro_env), res)
-                    for subexpr in op.cdr().cdr():
-                        res.append(self.eval_macro_expr(subexpr, macro_env))
+                # Dann muss ich jetzt das neue Environment aus den Parametern
+                # erzeugen und dann den Funktionskörper auswerten...
+                funcall_env = data.Environment(env, arg_dict)
+                if not data.nullp(formal_args):
+                    raise error.LispError(
+                        "arg list is shorter than the list of formal arguments!")
+                self.dbg("Function call environment is {0}", funcall_env)
+                self.dbg("Local environment for function call: {0}", funcall_env.data)
+                res = None
+                for expr in op.cdr().cdr():
+                    res = self.eval_expr(expr, funcall_env)
+                    self.dbg("Sub-expression {0} evaluates to {1}", expr, res)
+                    if isinstance(expr, data.ConsCell) and expr[0] == 'return':
+                        break
+                return res
+            if op[0] == 'macro':
+                # Hier muss ich zwei Mal evaluieren, einmal, um das Macro zu
+                # expandieren, und einmal, um den resultierenden Code zu
+                # evaluieren. Mmmmh...
+                expand_dict = {}
+                formal_args = op[1]
+                arg_list = lst.cdr()
+                while not data.nullp(formal_args):
+                    arg_name = formal_args.car()
+                    if arg_name in ('&rest', '&body'):
+                        expand_dict[formal_args[1]] = arg_list
+                        break
+                    expand_dict[arg_name] = arg_list.car()
+                    arg_list = arg_list.cdr()
+                    formal_args = formal_args.cdr()
+                macro_env = data.Environment(env, expand_dict)
+                res = []
 
-                    res = data.ConsCell.fromList(res) if len(res) != 1 else res[0]
+                # Jaaaa, hier muss ich wieder darauf auchten, dass die
+                # evaluierten Ausdrücke vermutlich Listen sind, und dass ich
+                # die nicht ohne weiteres an einander consen kann...
+                # for stmt in reversed(op.cdr().cdr()):
+                #     res = data.ConsCell(eval_macro_expr(stmt, macro_env), res)
+                for subexpr in op.cdr().cdr():
+                    res.append(self.eval_macro_expr(subexpr, macro_env))
 
-                    self.dbg("MMM Macro\n\t{0}\nexpands to\n\t--> {1}", op, res)
+                res = data.ConsCell.fromList(res) if len(res) != 1 else res[0]
 
-                    # Wenn alles läuft, wie ich mir das vorstelle, ist res an
-                    # dieser Stelle das expandierte Makro. Dann müsste ich den
-                    # makro-expandierten Code jetzt evaluieren. God damn, das sollte
-                    # wirklich im Parser statt finden, oder ich müsste Reader und
-                    # Evaluator eleganter verknüpfen.
-                    # raise error.LispError, "Macros are not implemented, yet."
-                    return self.eval_expr(res, env)
-                else:
-                    return lst
-        else:
-            raise error.LispError(f"List is neither nil nor a Lisp List: {lst}")
+                self.dbg("MMM Macro\n\t{0}\nexpands to\n\t--> {1}", op, res)
+
+                # Wenn alles läuft, wie ich mir das vorstelle, ist res an
+                # dieser Stelle das expandierte Makro. Dann müsste ich den
+                # makro-expandierten Code jetzt evaluieren. God damn, das sollte
+                # wirklich im Parser statt finden, oder ich müsste Reader und
+                # Evaluator eleganter verknüpfen.
+                # raise error.LispError, "Macros are not implemented, yet."
+                return self.eval_expr(res, env)
+            return lst
+
+        raise error.LispError(f"List is neither nil nor a Lisp List: {lst}")
 
     def eval_expr(self, expr, env=None):
         """Evaluate an expression of arbitrary kind or complexity."""
@@ -512,7 +506,7 @@ class LispInterpreter:
         # assert len(expr) == 2, "A Backquote can only refer to a single item."
         # assert expr[0] == 'backquote', \
         #     "The first element of a backquote expression must be the Atom 'backquote'"
-        if isinstance(expr, data.ConsCell):
+        if isinstance(expr, data.ConsCell):  # pylint: disable-msg=R1702
             exlst = []
             for subexpr in expr:
                 self.dbg("Evaluating back-quoted sub-expression: {0}", subexpr)
@@ -550,14 +544,13 @@ class LispInterpreter:
             # else:
             #     return data.ConsCell.fromList(exlst)
             return data.ConsCell.fromList(exlst)
-        elif isinstance(expr, (data.Atom, str, int, float)):
+        if isinstance(expr, (data.Atom, str, int, float)):
             return expr
-        else:
-            raise error.LispError(
-                f"Invalid type for backquote expression: {expr.__class__} - {expr}")
+        raise error.LispError(
+            f"Invalid type for backquote expression: {expr.__class__} - {expr}")
 
 
-def load_file(self, path, env=None):
+def load_file(self, path, env=None) -> Any:
     """Load a source file."""
     assert env is None or isinstance(env, data.Environment)
 
@@ -566,7 +559,7 @@ def load_file(self, path, env=None):
 
     res = None
     try:
-        with open(path, 'r') as fh:
+        with open(path, 'r', encoding="utf-8") as fh:
             expr = ""
             complete = False
             for line in fh:

@@ -1,6 +1,6 @@
-# Time-stamp: <2024-05-20 15:17:58 krylon>
+# Time-stamp: <2025-03-07 21:51:35 krylon>
 [flake8]
-max-line-length = 100
+max-line-length = 180
 extend-ignore = D400,D107,D105
 exclude = test_example_feed.py
 per-file-ignores =
