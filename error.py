@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Time-stamp: <2024-05-18 15:42:00 krylon>
+# Time-stamp: <2025-03-08 17:12:06 krylon>
 #
 # /home/krylon/sources/trunk/python/lispy/error.py
 # created on 19. 09. 2010
@@ -39,3 +39,7 @@ class LispError(Exception):
 
 class NoSuchVariableError(LispError):
     """Indicates a reference to an unbound name"""
+
+
+class CantHappenError(LispError):
+    """Indicates an error I had considered impossible DID occur"""
