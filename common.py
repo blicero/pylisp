@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 15:33:36 krylon>
+# Time-stamp: <2025-03-08 16:00:14 krylon>
 #
 # /data/code/python/krylisp/common.py
 # created on 17. 05. 2024
@@ -69,10 +69,6 @@ class Path:
             self.__base = folder
         return self.__base
 
-    def window(self) -> str:
-        """Return the path of the window state file"""
-        return os.path.join(self.__base, f"{APP_NAME.lower()}.win")
-
     def db(self) -> str:  # pylint: disable-msg=C0103
         """Return the path to the database"""
         return os.path.join(self.__base, f"{APP_NAME.lower()}.db")
@@ -84,18 +80,6 @@ class Path:
     def config(self) -> str:
         """Return the path of the configuration file"""
         return os.path.join(self.__base, f"{APP_NAME.lower()}.conf")
-
-    def icons(self) -> str:
-        """Return the path of the directory where icons are loaded from"""
-        return os.path.join(self.__base, "icons")
-
-    def download(self) -> str:
-        """Return the path of the download folder"""
-        return os.path.join(self.__base, "downloads")
-
-    def queue(self) -> str:
-        """Return the path of the playback queue save file"""
-        return os.path.join(self.__base, "playlist.json")
 
     def histfile(self) -> str:
         """Return the path of the history file for the REPL"""
@@ -120,12 +104,6 @@ def init_app() -> None:
     if not os.path.isdir(path.base()):
         print(f"Create base directory {path.base()}")
         os.mkdir(path.base())
-    if not os.path.isdir(path.download()):
-        print(f"Create download folder {path.download()}")
-        os.mkdir(path.download())
-    if not os.path.isdir(path.icons()):
-        print(f"Create icon folder {path.icons()}")
-        os.mkdir(path.icons())
 
 
 def get_logger(name: str, terminal: bool = True) -> logging.Logger:
