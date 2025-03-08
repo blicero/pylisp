@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 15:56:50 krylon>
+# Time-stamp: <2025-03-08 16:04:35 krylon>
 #
 # /data/code/python/krylisp/repl.py
 # created on 08. 03. 2025
@@ -21,6 +21,7 @@ krylisp.repl
 import atexit
 import logging
 import readline
+import traceback
 from typing import Final
 
 from krylisp import common, lisp, parser
@@ -72,14 +73,18 @@ Type 'help' or '?' for a list of commands.
                 if txt.lower() == '#quit':
                     break
 
-                ast = parser.parse_string(txt)
+                ast = parser.parse_string(txt, common.DEBUG)
                 result = self.interpreter.eval_expr(ast)
 
                 print(result)
+            except EOFError:
+                break
             except Exception as err:  # pylint: disable-msg=W0718
                 self.log.error("%s was raised: %s",
                                type(err),
-                               err)
+                               "\n".join(traceback.format_exception(err)))
+            finally:
+                print("\n\nByeeeee!\n")
 
 
 if __name__ == '__main__':

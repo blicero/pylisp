@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 21:56:32 krylon>
+# Time-stamp: <2025-03-08 16:16:55 krylon>
 #
 # /data/code/python/krylisp/parser.py
 # created on 19. 05. 2024
@@ -17,7 +17,7 @@ krylisp.parser
 (c) 2024 Benjamin Walkenhorst
 """
 
-from typing import Any, Final
+from typing import Final, Optional, Union
 
 from pyparsing import (Forward, Literal, ParseException, ParseResults,
                        QuotedString, Regex, Suppress, Word, ZeroOrMore, alphas,
@@ -108,7 +108,7 @@ class IncompleteException(ParseError):
     """
 
 
-def result_to_list(r) -> data.ConsCell:
+def result_to_list(r: ParseResults) -> data.ConsCell:
     """
     Return the argument r as a Lisp list.
 
@@ -164,7 +164,7 @@ def quote_body(head, body) -> data.ConsCell:
 # innerhalb eines Backquote-Ausdrucks sind, aber ,@ kann erfordern, erst ein
 # Symbol auszuwerten oder so, und das dann in den übergebordneten Ausdruck
 # zu splicen, das muss ich zwangsläufig im Interpreter tun.
-def parse_string(s: str, dbg: bool = False) -> Any:
+def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.ConsCell, data.Function]]:
     """Attempt to parse a string and return the result"""
     assert isinstance(s, str)
     res = None
@@ -175,6 +175,9 @@ def parse_string(s: str, dbg: bool = False) -> Any:
         print(" "*(err.column-1) + "^")
         print(err)
         raise SyntaxException() from err
+
+    if data.listp(res):
+        return result_to_list(res)
 
     if len(res) == 1:
         if dbg:
@@ -195,11 +198,11 @@ def parse_string(s: str, dbg: bool = False) -> Any:
     try:
         # return result_to_list(res if len(res) > 1 else res[0])
         if len(res) <= 1:
-            return res
+            return data.Atom(res[0])
         return result_to_list(res)
     except TypeError as terr:
         print("TypeError:", terr)
-        return res if len(res) > 1 else res[0]
+        return result_to_list(res) if len(res) > 1 else res[0]
 
 
 # Local Variables: #
