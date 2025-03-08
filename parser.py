@@ -35,7 +35,7 @@ string = QuotedString('"')
 integer = Regex(r"-?\d+").setParseAction(lambda string, loc, tok: int(tok[0]))
 floating_point_number = Regex(r"-?\d+[.]\d+(?:e-?\d+)?").setParseAction(
     lambda string, loc, tok: float(tok[0]))
-word_chars = alphas + nums + "-!$%&/=+-_*<>|"
+word_chars = alphas + nums + "-!$:%&/=+-_*<>|"
 symbol = Word(word_chars).setParseAction(lambda string, loc, tok: data.Atom(tok[0]))
 comment = Suppress(Regex(";[^\n]*"))
 token = Forward()
