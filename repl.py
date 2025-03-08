@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 16:04:35 krylon>
+# Time-stamp: <2025-03-08 22:44:25 krylon>
 #
 # /data/code/python/krylisp/repl.py
 # created on 08. 03. 2025
@@ -61,6 +61,7 @@ Type 'help' or '?' for a list of commands.
 
         self.log = common.get_logger("REPL")
         self.interpreter = lisp.LispInterpreter()
+        self.interpreter.debug = True
 
     def run(self) -> None:
         """Run the read-eval-print-loop"""
@@ -83,8 +84,6 @@ Type 'help' or '?' for a list of commands.
                 self.log.error("%s was raised: %s",
                                type(err),
                                "\n".join(traceback.format_exception(err)))
-            finally:
-                print("\n\nByeeeee!\n")
 
 
 if __name__ == '__main__':

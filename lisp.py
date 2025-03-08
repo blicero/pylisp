@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-07 22:24:06 krylon>
+# Time-stamp: <2025-03-08 22:39:10 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -23,7 +23,7 @@ import sys
 import time
 import traceback
 from functools import reduce
-from typing import Any, Final, Union
+from typing import Any, Final, Optional, Union
 
 from krylib import even, moan
 
@@ -66,7 +66,7 @@ class LispInterpreter:
         """Print a warning."""
         moan("WARNING: " + args[0], *args[1:])
 
-    def eval_atom(self, atom, env=None):
+    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, data.Atom, data.ConsCell]]:
         """Evaluate an Atom."""
         assert atom is not None, "Atom must not be None."
 
@@ -75,27 +75,44 @@ class LispInterpreter:
 
         self.dbg("Evaluating atom {0}", atom)
 
-        at_val = None
+        match atom:
+            case None:
+                return data.Symbol("nil")
+            case data.Symbol(value):
+                return env[value]
+            case data.Atom(value):
+                if isinstance(value, (str, int, float)):
+                    return data.Atom(value)
+                if isinstance(value, data.Symbol):
+                    if value.is_keyword():
+                        return value
+                    if value.value.upper() == "nil":
+                        return data.EMPTY_LIST
+                    if value.value.upper() == "T":
+                        return data.Symbol("t")
+                    return env[value.value.upper()]
+            case _:
+                raise TypeError(f"Did not expect {atom.__class__}")
 
-        if isinstance(atom, data.Atom):
-            at_val = atom.value
-        elif isinstance(atom, (str, int, float)):
-            # at_val = atom
-            return atom
-        else:
-            raise error.LispError(f"Atom is neither a String nor an Atom: {atom}")
+        # if isinstance(atom, data.Atom):
+        #     at_val = atom.value
+        # elif isinstance(atom, (str, int, float)):
+        #     # at_val = atom
+        #     return atom
+        # else:
+        #     raise error.LispError(f"Atom is neither a String nor an Atom: {atom}")
 
-        if at_val == 'nil':
-            return data.EMPTY_LIST
-        # Da ein Atom ja kein String ist, sollte ich überlegen, ob ich nicht
-        # schon beim Erzeugen eines Atoms prüfen sollte, ob das eine Zahl ist...
-        if at_val == 't':
-            return data.Atom('t')
-        if at_val.startswith(":"):
-            return atom
-        if isinstance(at_val, (int, float)):
-            return at_val
-        return env[at_val]
+        # if at_val == 'nil':
+        #     return data.EMPTY_LIST
+        # # Da ein Atom ja kein String ist, sollte ich überlegen, ob ich nicht
+        # # schon beim Erzeugen eines Atoms prüfen sollte, ob das eine Zahl ist...
+        # if at_val == 't':
+        #     return data.Atom('t')
+        # if at_val.startswith(":"):
+        #     return atom
+        # if isinstance(at_val, (int, float)):
+        #     return at_val
+        # return env[at_val]
 
     # Ich muss mir noch überlegen, wie viel von der Sprache ich fest in den
     # Interpreter einbauen bzw. auf der reinen Lisp-Ebene implementieren will.
@@ -116,7 +133,7 @@ class LispInterpreter:
     #
     # Freitag, 08. 10. 2010, 01:36
     # Ich glaube, ich muss progn als special form implementieren!!!
-    def eval_list(self, lst, env=None) -> Union[data.Atom, data.ConsCell, data.Function, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+    def eval_list(self, lst, env=None) -> Union[data.Atom, data.Symbol, data.ConsCell, data.Function, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
         self.dbg("Evaluating list {0}", lst)
@@ -451,22 +468,36 @@ class LispInterpreter:
         if env is None:
             env = self.env
 
-        res = data.EMPTY_LIST
-        if isinstance(expr, data.ConsCell):
-            self.dbg("Evaluating list: {0}", expr)
-            res = self.eval_list(expr, env)
-        elif isinstance(expr, data.Atom):
-            self.dbg("Evaluating atom: {0}", expr)
-            res = self.eval_atom(expr, env)
-        elif isinstance(expr, (str, int, float)):
-            self.dbg("Evaluating literal: {0}", expr)
-            res = expr
-        elif expr is None:
-            res = data.EMPTY_LIST
-        else:
-            raise error.LispError(f"Unexpected type for expression ({expr.__class__}): {expr}")
-        self.dbg("Expression {0} evaluates to {1}", expr, res)
-        return res
+        match expr:
+            case None:
+                return data.EMPTY_LIST
+            case data.Atom(_):
+                return self.eval_atom(expr)
+            case data.Symbol(_):
+                return self.eval_atom(expr)
+            case data.ConsCell(_, _):
+                return self.eval_list(expr)
+            case _:
+                raise TypeError(f"Unexpected type {expr.__class__}")
+
+        # res = data.EMPTY_LIST
+        # if expr is None:
+        #     return res
+        # if isinstance(expr, data.ConsCell):
+        #     self.dbg("Evaluating list: {0}", expr)
+        #     res = self.eval_list(expr, env)
+        # elif isinstance(expr, data.Atom):
+        #     self.dbg("Evaluating atom: {0}", expr)
+        #     res = self.eval_atom(expr, env)
+        # elif isinstance(expr, (str, int, float)):
+        #     self.dbg("Evaluating literal: {0}", expr)
+        #     res = expr
+        # elif expr is None:
+        #     res = data.EMPTY_LIST
+        # else:
+        #     raise error.LispError(f"Unexpected type for expression ({expr.__class__}): {expr}")
+        # self.dbg("Expression {0} evaluates to {1}", expr, res)
+        # return res
 
     def eval_macro_expr(self, expr, env=None):
         """Evaluate a macro expression."""

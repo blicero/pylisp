@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 21:56:43 krylon>
+# Time-stamp: <2025-03-08 17:47:14 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -39,7 +39,46 @@ def qw(s: str) -> list[str]:
 
 def listp(x: Any) -> bool:
     """Return True if x is a Lisp list"""
-    return isinstance(x, ConsCell) or (x is None)
+    match x:
+        case None:
+            return True
+        case ConsCell(_, _):
+            return True
+        case Symbol("nil"):
+            return True
+        case _:
+            return False
+
+
+def is_atomic(x: Any) -> bool:
+    """Return True if x is an atomic value."""
+    if x is None:
+        return True
+    if isinstance(x, (int, str, float, Atom, Symbol)):
+        return True
+    return False
+
+
+class Symbol:
+    """Symbol symbolizes a symbolic token"""
+
+    __slots__ = ["value"]
+    __match_args__ = ("value", )
+
+    value: str
+
+    def __init__(self, value: str) -> None:
+        self.value = value
+
+    def is_keyword(self) -> bool:
+        """Return True if self is a keyword symbol (i.e. begins with a colon)"""
+        return self.value[0] == ':'
+
+    def __repr__(self) -> str:
+        return self.value.upper()
+
+    def __str__(self) -> str:
+        return self.value.upper()
 
 
 # Wenn ich Zahlen als Atome darstellen will, sollte ich sicherstellen, dass
@@ -50,12 +89,16 @@ class Atom:
 
     __slots__ = ['value']
 
-    value: Union[str, int, float]
+    value: Union[str, int, float, Symbol]
 
-    def __init__(self, value: Union[str, int, float, 'Atom']) -> None:
-        if isinstance(value, (int, float)):
+    __match_args__ = ('value', )
+
+    def __init__(self, value: Optional[Union[str, int, float, Symbol, 'Atom']]) -> None:
+        if value is None:
+            self.value = Symbol("nil")
+        elif isinstance(value, (int, float)):
             self.value = value
-        elif isinstance(value, Atom):
+        elif isinstance(value, (Atom, Symbol)):
             self.value = value.value
         elif int_re.match(value) is not None:
             self.value = int(value)
@@ -97,6 +140,8 @@ class ConsCell:
 
     head: Union[None, Atom, 'ConsCell']
     tail: Optional['ConsCell']
+
+    __match_args__ = ('car', 'cdr')
 
     def __init__(self,
                  car: Union[None, Atom, 'ConsCell'],

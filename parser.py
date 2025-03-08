@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 16:16:55 krylon>
+# Time-stamp: <2025-03-08 22:45:24 krylon>
 #
 # /data/code/python/krylisp/parser.py
 # created on 19. 05. 2024
@@ -24,6 +24,7 @@ from pyparsing import (Forward, Literal, ParseException, ParseResults,
                        nums)
 
 from krylisp import data
+from krylisp.error import CantHappenError
 
 DEBUG_GRAMMAR: Final[bool] = False
 
@@ -176,33 +177,69 @@ def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.Co
         print(err)
         raise SyntaxException() from err
 
-    if data.listp(res):
-        return result_to_list(res)
+    if dbg:
+        print(f"Got {type(res)}: {res}")
+
+    if res is None or len(res) == 0:
+        return data.Atom("nil")
 
     if len(res) == 1:
-        if dbg:
-            print(f"{res[0].__class__}: {res[0]}")
-        return data.Atom(res[0])
+        if data.is_atomic(res[0]):
+            match res[0]:
+                case data.Atom(value):
+                    return res[0]
+                case x if isinstance(x, (int, str, float)):
+                    return data.Atom(x)
+                case _:
+                    raise CantHappenError(f"Unexpected type: {res[0].__class__}")
+        else:
+            return result_to_list(res[0])
 
-    if isinstance(res, (str, data.ConsCell, data.Atom)):
-        if dbg:
-            print(f"Return a single value: {res}")
-        return res
-    if len(res) == 0:
-        # raise IncompleteException("Incomplete expression!")
-        return data.Atom('nil')
+        match res[0]:
+            case None:
+                return None
+            case data.Atom(value):
+                return data.Atom(value)
+            case data.ConsCell(head, tail):
+                if tail is None:
+                    if head is None:
+                        return data.Atom("nil")
+                    if dbg:
+                        print(f"XXX Got {type(head)}: {head}")
+                    return head
+                return res[0]
+            case _:
+                return result_to_list(res)
 
-    if dbg:
-        print(res.__class__, "(", len(res), ") ->", res)
+    return result_to_list(res)
 
-    try:
-        # return result_to_list(res if len(res) > 1 else res[0])
-        if len(res) <= 1:
-            return data.Atom(res[0])
-        return result_to_list(res)
-    except TypeError as terr:
-        print("TypeError:", terr)
-        return result_to_list(res) if len(res) > 1 else res[0]
+    # if data.listp(res):
+    #     return result_to_list(res)
+
+    # if len(res) == 1:
+    #     if dbg:
+    #         print(f"{res[0].__class__}: {res[0]}")
+    #     return data.Atom(res[0])
+
+    # if isinstance(res, (str, data.ConsCell, data.Atom)):
+    #     if dbg:
+    #         print(f"Return a single value: {res}")
+    #     return res
+    # if len(res) == 0:
+    #     # raise IncompleteException("Incomplete expression!")
+    #     return data.Atom('nil')
+
+    # if dbg:
+    #     print(res.__class__, "(", len(res), ") ->", res)
+
+    # try:
+    #     # return result_to_list(res if len(res) > 1 else res[0])
+    #     if len(res) <= 1:
+    #         return data.Atom(res[0])
+    #     return result_to_list(res)
+    # except TypeError as terr:
+    #     print("TypeError:", terr)
+    #     return result_to_list(res) if len(res) > 1 else res[0]
 
 
 # Local Variables: #
