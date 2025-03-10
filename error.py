@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Time-stamp: <2025-03-10 19:15:11 krylon>
+# Time-stamp: <2025-03-10 20:34:05 krylon>
 #
 # /home/krylon/sources/trunk/python/lispy/error.py
 # created on 19. 09. 2010
@@ -47,3 +47,7 @@ class CantHappenError(LispError):
 
 class TypingError(LispError):
     """Indicates usage of the wrong type"""
+
+
+class DivByZeroError(LispError):
+    """Somebody attempted to divide by zero."""
