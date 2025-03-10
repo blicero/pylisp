@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 19:29:33 krylon>
+# Time-stamp: <2025-03-10 20:33:01 krylon>
 #
 # /data/code/python/krylisp/test_interpreter.py
 # created on 10. 03. 2025
@@ -19,7 +19,7 @@ krylisp.test_interpreter
 
 import unittest
 
-from krylisp import data, lisp
+from krylisp import data, error, lisp, parser
 
 
 def default_env() -> data.Environment:
@@ -39,6 +39,7 @@ class TestInterpreter(unittest.TestCase):
     def test_01_atoms(self) -> None:
         """Test evaluating atoms"""
         interpreter = lisp.LispInterpreter(default_env())
+        interpreter.debug = True
 
         test_cases = [
             (data.Symbol("pi"), 3.141592, False),
@@ -53,6 +54,30 @@ class TestInterpreter(unittest.TestCase):
             except Exception as err:  # pylint: disable-msg=W0718
                 if not c[2]:
                     self.fail(f"{err.__class__}: {err}")
+
+    def test_02_lists(self) -> None:
+        """Test evaluating lists."""
+        interpreter = lisp.LispInterpreter(default_env())
+        interpreter.debug = True
+
+        test_cases = [
+            ("(+ 5 7)", 12, False),
+            ("(* 8 8)", 64, False),
+            ("(/ 32 0)", None, True),
+        ]
+
+        for c in test_cases:
+            ast = parser.parse_string(c[0])
+            if c[2]:
+                with self.assertRaises(error.LispError):
+                    _ = interpreter.eval_expr(ast)
+            else:
+                try:
+                    res = interpreter.eval_expr(ast)
+                except Exception as err:  # pylint: disable-msg=W0718
+                    self.fail(f"{err.__class__} was caught: {err}")
+                else:
+                    self.assertEqual(c[1], res)
 
 # Local Variables: #
 # python-indent: 4 #
