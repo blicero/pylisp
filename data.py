@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 19:21:44 krylon>
+# Time-stamp: <2025-03-10 22:21:33 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -157,10 +157,6 @@ class ConsCell:
         except IndexError:
             pass
 
-    # Dienstag, 21. 09. 2010, 00:34
-    # Kleinigkeiten, die man am Wegesrand lernt:
-    # Man kann in Python statische Methoden schreiben, indem man die mit
-    # @staticmethod dekoriert.
     @staticmethod
     def fromList(lst) -> 'ConsCell':
         """Create a list that is a deep copy of the parameter"""
