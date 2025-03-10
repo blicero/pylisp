@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 22:39:10 krylon>
+# Time-stamp: <2025-03-10 18:44:15 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -17,6 +17,7 @@ krylisp.lisp
 (c) 2024 Benjamin Walkenhorst
 """
 
+import logging
 import math
 import operator
 import sys
@@ -25,9 +26,9 @@ import traceback
 from functools import reduce
 from typing import Any, Final, Optional, Union
 
-from krylib import even, moan
+from krylib import even
 
-from krylisp import data, error, parser
+from krylisp import common, data, error, parser
 
 # Donnerstag, 07. 10. 2010, 22:03
 # Damit ich richtige Makros schreiben kann, brauche ich gensym, und damit DAS
@@ -49,40 +50,47 @@ def get_num(v):
 class LispInterpreter:
     """LispInterpreter interprets Lisp code."""
 
-    __slots__ = ['debug', 'gensym_counter', 'env']
+    __slots__ = ['debug', 'gensym_counter', 'env', 'log']
 
-    def __init__(self, env=None, counter=0):
+    debug: bool
+    gensym_counter: int
+    env: data.Environment
+    log: logging.Logger
+
+    def __init__(self, env=None, counter=0) -> None:
         assert env is None or isinstance(env, data.Environment)
         self.debug = False
         self.env = data.Environment() if env is None else env
         self.gensym_counter = counter
+        self.log = common.get_logger(f"{self.__class__}")
 
     def dbg(self, *args):
         """Print a debug message if the debug flag is set."""
-        if self.debug:
-            moan(*args)
+        self.log.debug(args[0], *args[1:])
 
     def warn(self, *args):
         """Print a warning."""
-        moan("WARNING: " + args[0], *args[1:])
+        self.log.warning(args[0], *args[1:])
 
-    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, data.Atom, data.ConsCell]]:
+    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, str, int, float, data.Atom, data.ConsCell]]:
         """Evaluate an Atom."""
         assert atom is not None, "Atom must not be None."
 
         if env is None:
             env = self.env
 
-        self.dbg("Evaluating atom {0}", atom)
+        self.dbg("Evaluating %s %s", atom.__class__, atom)
 
         match atom:
             case None:
                 return data.Symbol("nil")
             case data.Symbol(value):
+                if atom.is_keyword():
+                    return atom
                 return env[value]
             case data.Atom(value):
                 if isinstance(value, (str, int, float)):
-                    return data.Atom(value)
+                    return value
                 if isinstance(value, data.Symbol):
                     if value.is_keyword():
                         return value
@@ -136,7 +144,7 @@ class LispInterpreter:
     def eval_list(self, lst, env=None) -> Union[data.Atom, data.Symbol, data.ConsCell, data.Function, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
-        self.dbg("Evaluating list {0}", lst)
+        self.dbg("Evaluating list %s", lst)
 
         if env is None:
             env = self.env
@@ -196,7 +204,7 @@ class LispInterpreter:
 
                 self.dbg("Evaluating condition of if-expression.")
                 cond = not data.nullp(self.eval_expr(lst[1], env))
-                self.dbg("--> {0}", cond)
+                self.dbg("--> %s", cond)
                 if cond:
                     self.dbg("if-condition is true.")
                     return self.eval_expr(lst[2], env)
@@ -324,7 +332,7 @@ class LispInterpreter:
                 update_forms = {}
                 body = lst.cdr().cdr().cdr()
 
-                self.dbg("Evaluating do-loop: {0}", lst)
+                self.dbg("Evaluating do-loop: %s", lst)
 
                 end_expr = lst[2][0]
                 result_expr = lst[2][1]
@@ -364,7 +372,7 @@ class LispInterpreter:
                 return load_file(path, env)
             if lst.car() == 'dbg':
                 arg = self.eval_expr(lst[1], env)
-                self.dbg("Setting debug flag to {0}", arg)
+                self.dbg("Setting debug flag to %s", arg)
                 self.debug = not data.nullp(arg)
                 return data.Atom('t') if self.debug else data.Atom('nil')
 
@@ -411,12 +419,12 @@ class LispInterpreter:
                 if not data.nullp(formal_args):
                     raise error.LispError(
                         "arg list is shorter than the list of formal arguments!")
-                self.dbg("Function call environment is {0}", funcall_env)
-                self.dbg("Local environment for function call: {0}", funcall_env.data)
+                self.dbg("Function call environment is %s", funcall_env)
+                self.dbg("Local environment for function call: %s", funcall_env.data)
                 res = None
                 for expr in op.cdr().cdr():
                     res = self.eval_expr(expr, funcall_env)
-                    self.dbg("Sub-expression {0} evaluates to {1}", expr, res)
+                    self.dbg("Sub-expression %s evaluates to %s", expr, res)
                     if isinstance(expr, data.ConsCell) and expr[0] == 'return':
                         break
                 return res
@@ -448,7 +456,7 @@ class LispInterpreter:
 
                 res = data.ConsCell.fromList(res) if len(res) != 1 else res[0]
 
-                self.dbg("MMM Macro\n\t{0}\nexpands to\n\t--> {1}", op, res)
+                self.dbg("MMM Macro\n\t%s\nexpands to\n\t--> %s", op, res)
 
                 # Wenn alles läuft, wie ich mir das vorstelle, ist res an
                 # dieser Stelle das expandierte Makro. Dann müsste ich den
@@ -478,26 +486,9 @@ class LispInterpreter:
             case data.ConsCell(_, _):
                 return self.eval_list(expr)
             case _:
+                if isinstance(expr, (int, float, str)):
+                    return expr
                 raise TypeError(f"Unexpected type {expr.__class__}")
-
-        # res = data.EMPTY_LIST
-        # if expr is None:
-        #     return res
-        # if isinstance(expr, data.ConsCell):
-        #     self.dbg("Evaluating list: {0}", expr)
-        #     res = self.eval_list(expr, env)
-        # elif isinstance(expr, data.Atom):
-        #     self.dbg("Evaluating atom: {0}", expr)
-        #     res = self.eval_atom(expr, env)
-        # elif isinstance(expr, (str, int, float)):
-        #     self.dbg("Evaluating literal: {0}", expr)
-        #     res = expr
-        # elif expr is None:
-        #     res = data.EMPTY_LIST
-        # else:
-        #     raise error.LispError(f"Unexpected type for expression ({expr.__class__}): {expr}")
-        # self.dbg("Expression {0} evaluates to {1}", expr, res)
-        # return res
 
     def eval_macro_expr(self, expr, env=None):
         """Evaluate a macro expression."""
@@ -506,7 +497,7 @@ class LispInterpreter:
         if env is None:
             env = self.env
 
-        self.dbg("Evaluating macro: {0}", expr)
+        self.dbg("Evaluating macro: %s", expr)
         res = None
         if isinstance(expr, data.ConsCell):
             # Hier muss ich eine Reihe von Spezialfällen berücksichtigen, die im
@@ -522,7 +513,7 @@ class LispInterpreter:
         else:
             res = self.eval_expr(expr, env)
 
-        self.dbg("Evaluated macro {0} --> {1}", expr, res)
+        self.dbg("Evaluated macro %s --> %s", expr, res)
         return res
 
     def eval_backquote(self, expr, env=None):
@@ -532,7 +523,7 @@ class LispInterpreter:
         if env is None:
             env = self.env
 
-        self.dbg("Evaluating back-quoted expression {0}", expr)
+        self.dbg("Evaluating back-quoted expression %s", expr)
         # assert isinstance(expr, data.ConsCell), "Backquote expression must be a linked list!"
         # assert len(expr) == 2, "A Backquote can only refer to a single item."
         # assert expr[0] == 'backquote', \
@@ -540,7 +531,7 @@ class LispInterpreter:
         if isinstance(expr, data.ConsCell):  # pylint: disable-msg=R1702
             exlst = []
             for subexpr in expr:
-                self.dbg("Evaluating back-quoted sub-expression: {0}", subexpr)
+                self.dbg("Evaluating back-quoted sub-expression: %s", subexpr)
                 # Hier muss ich jetzt anhand des Typs und der Gestalt dispatchen...
                 if isinstance(subexpr, data.ConsCell):
                     if subexpr.car() == 'backquote':
