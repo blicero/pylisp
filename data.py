@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 18:32:46 krylon>
+# Time-stamp: <2025-03-10 19:21:44 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -52,11 +52,7 @@ def listp(x: Any) -> bool:
 
 def is_atomic(x: Any) -> bool:
     """Return True if x is an atomic value."""
-    if x is None:
-        return True
-    if isinstance(x, (int, str, float, Atom, Symbol)):
-        return True
-    return False
+    return isinstance(x, (int, str, float, Symbol))
 
 
 class Symbol:
@@ -70,68 +66,20 @@ class Symbol:
     def __init__(self, value: str) -> None:
         self.value = value
 
-    def is_keyword(self) -> bool:
-        """Return True if self is a keyword symbol (i.e. begins with a colon)"""
-        return self.value[0] == ':'
-
     def __repr__(self) -> str:
         return self.value.upper()
 
     def __str__(self) -> str:
         return self.value.upper()
 
-
-# Wenn ich Zahlen als Atome darstellen will, sollte ich sicherstellen, dass
-# die gleich beim Erzeugen des Atoms geparst werden und die auch bei Vergleichen
-# mit berücksichtigen.
-class Atom:
-    """An Atom is a number or a symbol, the basic building block of Lisp data"""
-
-    __slots__ = ['value']
-
-    value: Union[str, int, float, Symbol]
-
-    __match_args__ = ('value', )
-
-    def __init__(self, value: Optional[Union[str, int, float, Symbol, 'Atom']]) -> None:
-        if value is None:
-            self.value = Symbol("nil")
-        elif isinstance(value, (int, float)):
-            self.value = value
-        elif isinstance(value, (Atom, Symbol)):
-            self.value = value.value
-        elif int_re.match(value) is not None:
-            self.value = int(value)
-        elif float_re.match(value) is not None:
-            self.value = float(value)
-        else:
-            assert isinstance(value, str)
-            self.value = value.lower()
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, Atom):
-            return self.value == other.value
-        if isinstance(other, str):
-            return self.value == other.lower()
-        if self.value == 'nil':
-            return nullp(other)
-        return False
-
-    def __hash__(self):
-        return self.value.__hash__()
-
-    def __str__(self):
-        return f"#<Atom {self.value} >"
-
-    def __repr__(self):
-        return f"#<Atom {self.value} >"
-
-    def __nonzero__(self):
-        return self != 'nil'
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Symbol):
+            return False
+        return self.value.upper() == other.value.upper()
 
     def is_keyword(self) -> bool:
         """Return True if self is a keyword symbol (i.e. begins with a colon)"""
-        return isinstance(self.value, str) and self.value[0] == ':'
+        return self.value[0] == ':'
 
 
 # Ich muss mur noch einmal Gedanken über die Darstellung von nil machen... ;-/
@@ -142,13 +90,13 @@ class ConsCell:
 
     __slots__ = ['head', 'tail']
 
-    head: Union[None, Atom, 'ConsCell']
+    head: Union[None, Symbol, int, float, str, 'ConsCell']
     tail: Optional['ConsCell']
 
     __match_args__ = ('car', 'cdr')
 
     def __init__(self,
-                 car: Union[None, Atom, 'ConsCell'],
+                 car: Union[None, Symbol, int, float, str, 'ConsCell'],
                  cdr: Optional['ConsCell']) -> None:
         # assert listp(cdr)
         self.head = car
@@ -159,7 +107,6 @@ class ConsCell:
         node: ConsCell = self
         while node.tail is not None:
             cnt += 1
-            # if isinstance(node.tail, ConsCell):
             if node.tail is not None:
                 node = node.tail
             else:
@@ -259,9 +206,9 @@ def cadr(x: ConsCell) -> Any:
     return x.cdr().car()
 
 
-def nullp(x: Union[Atom, None, ConsCell]) -> bool:
+def nullp(x: Union[Symbol, int, float, str, None, ConsCell]) -> bool:
     """Return True if x is nil"""
-    if isinstance(x, Atom):
+    if isinstance(x, Symbol):
         return "nil" == x.value
     if x is None:
         return True
@@ -287,14 +234,14 @@ class Environment:
         self.parent = parent
         self.data = {}
         for sym, val in init.items():
-            self.data[sym.value if isinstance(sym, Atom) else sym] = val
+            self.data[sym.value if isinstance(sym, Symbol) else sym] = val
         self.level = 0 if (parent is None) else parent.level + 1
 
-    def __getitem__(self, key: Union[str, Atom]) -> Any:
+    def __getitem__(self, key: Union[str, Symbol]) -> Any:
         lookup_key = key
-        if isinstance(key, Atom):
+        if isinstance(key, Symbol):
             assert isinstance(key.value, str)
-            lookup_key = key.value
+            lookup_key = key.value.upper()
         try:
             if lookup_key in self.data:
                 return self.data[lookup_key]
@@ -302,35 +249,30 @@ class Environment:
                 return self.parent[lookup_key]
             if isinstance(self.parent, Environment):
                 return self.parent[lookup_key]
-            raise error.LispError(f"No such variable in environment: {lookup_key}")
+            raise error.BindingError(f"No such variable in environment: {lookup_key}")
         except KeyError as err:
             # Shouldn't I raise NoSuchVariableError?
-            raise error.LispError(f"No such variable in environment: {lookup_key}") from err
+            raise error.BindingError(f"No such variable in environment: {lookup_key}") from err
 
     # Dafür müsste ich erst nachsehen, welches das "top-most" environment ist,
     # in dem eine Variable mit dem angegebenen Namen existiert, und die dann
     # darin speichern...
-    def __setitem__(self, key: Union[str, Atom], value) -> None:
-        assert isinstance(key, (Atom, str))
+    def __setitem__(self, key: Union[str, Symbol], value) -> None:
+        assert isinstance(key, (Symbol, str))
 
-        if isinstance(key, Atom):
+        if isinstance(key, Symbol):
             assert isinstance(key.value, str)
             key = key.value
 
-        #  print(f"Setting variable {key} to {value}")
+        key = key.upper()
 
-        # Nein, das ist falsch...
         env: Environment = self
         while (env.parent is not None) and (key not in env.data):
-            # print("Going up one level to")
             env = env.parent
-            # print(env)
 
         if key in env.data:
-            # print(f"Updating variable {key} in environment {env}")
             env.data[key] = value
         else:
-            # print(f"Updating variable {key} in environment {self.data}")
             self.data[key] = value
 
     def __contains__(self, key: str) -> bool:

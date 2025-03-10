@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 22:45:24 krylon>
+# Time-stamp: <2025-03-10 18:59:10 krylon>
 #
 # /data/code/python/krylisp/parser.py
 # created on 19. 05. 2024
@@ -37,7 +37,7 @@ integer = Regex(r"-?\d+").setParseAction(lambda string, loc, tok: int(tok[0]))
 floating_point_number = Regex(r"-?\d+[.]\d+(?:e-?\d+)?").setParseAction(
     lambda string, loc, tok: float(tok[0]))
 word_chars = alphas + nums + "-!$:%&/=+-_*<>|"
-symbol = Word(word_chars).setParseAction(lambda string, loc, tok: data.Atom(tok[0]))
+symbol = Word(word_chars).setParseAction(lambda string, loc, tok: data.Symbol(tok[0]))
 comment = Suppress(Regex(";[^\n]*"))
 token = Forward()
 
@@ -45,16 +45,16 @@ lisp_list = open_paren + ZeroOrMore(expr) + close_paren
 lisp_list.setParseAction(
     lambda st, loc, tok: result_to_list(tok) if len(tok) > 0 else data.ConsCell(None, None))
 quote_expr = (Suppress(Literal("'")) + expr).setParseAction(
-    lambda st, loc, tok: quote_body(data.Atom("quote"), result_to_list(tok)))
+    lambda st, loc, tok: quote_body(data.Symbol("quote"), result_to_list(tok)))
 
 # Eigentlich brauche ich hier eine Regel für Backquoted-Listen, damit
 # der Parser da auch rekursiv durchsteigen kann.  Und ich muss dafür
 # sorgen, dass aus `(peter horst karl) (backquote (peter horst karl))
 # wird, und nicht (backquote peter horst karl)!!!
 splice_expr = (Suppress(Literal(",@")) + expr).setParseAction(
-    lambda st, loc, tok: data.ConsCell(data.Atom("comma-at"), result_to_list(tok)))
+    lambda st, loc, tok: data.ConsCell(data.Symbol("comma-at"), result_to_list(tok)))
 unquote_expr = (Suppress(Literal(",")) + expr).setParseAction(
-    lambda st, loc, tok: data.ConsCell(data.Atom("comma"), result_to_list(tok)))
+    lambda st, loc, tok: data.ConsCell(data.Symbol("comma"), result_to_list(tok)))
 # backquote = Forward
 backquote_content = Forward()
 backquote_list = open_paren + ZeroOrMore(backquote_content) + close_paren
@@ -64,7 +64,7 @@ backquote_content << (expr |    # pylint: disable-msg=W0104
                       unquote_expr |
                       backquote_list)
 backquote_expr = (Suppress(Literal("`")) + backquote_content).setParseAction(
-    lambda st, loc, tok: quote_body(data.Atom("backquote"), result_to_list(tok)))
+    lambda st, loc, tok: quote_body(data.Symbol("backquote"), result_to_list(tok)))
 token << (floating_point_number |  # pylint: disable-msg=W0104
           integer |
           string |
@@ -121,10 +121,10 @@ def result_to_list(r: ParseResults) -> data.ConsCell:
         return data.ConsCell.fromList(r)
     if isinstance(r, data.ConsCell):
         return r
-    if isinstance(r, data.Atom):
+    if isinstance(r, data.Symbol):
         return data.ConsCell(r, None)
     if isinstance(r, (int, float, str)):
-        a = data.Atom(r)
+        a = data.Symbol(r)
         return data.ConsCell(a, None)
 
     for x in r:
@@ -165,7 +165,7 @@ def quote_body(head, body) -> data.ConsCell:
 # innerhalb eines Backquote-Ausdrucks sind, aber ,@ kann erfordern, erst ein
 # Symbol auszuwerten oder so, und das dann in den übergebordneten Ausdruck
 # zu splicen, das muss ich zwangsläufig im Interpreter tun.
-def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.ConsCell, data.Function]]:
+def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Symbol, int, str, float, data.ConsCell, data.Function]]:
     """Attempt to parse a string and return the result"""
     assert isinstance(s, str)
     res = None
@@ -181,15 +181,15 @@ def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.Co
         print(f"Got {type(res)}: {res}")
 
     if res is None or len(res) == 0:
-        return data.Atom("nil")
+        return data.Symbol("nil")
 
     if len(res) == 1:
         if data.is_atomic(res[0]):
             match res[0]:
-                case data.Atom(value):
+                case data.Symbol(value):
                     return res[0]
                 case x if isinstance(x, (int, str, float)):
-                    return data.Atom(x)
+                    return x
                 case _:
                     raise CantHappenError(f"Unexpected type: {res[0].__class__}")
         else:
@@ -198,12 +198,12 @@ def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.Co
         match res[0]:
             case None:
                 return None
-            case data.Atom(value):
-                return data.Atom(value)
+            case data.Symbol(value):
+                return data.Symbol(value)
             case data.ConsCell(head, tail):
                 if tail is None:
                     if head is None:
-                        return data.Atom("nil")
+                        return data.Symbol("nil")
                     if dbg:
                         print(f"XXX Got {type(head)}: {head}")
                     return head
@@ -212,34 +212,6 @@ def parse_string(s: str, dbg: bool = False) -> Optional[Union[data.Atom, data.Co
                 return result_to_list(res)
 
     return result_to_list(res)
-
-    # if data.listp(res):
-    #     return result_to_list(res)
-
-    # if len(res) == 1:
-    #     if dbg:
-    #         print(f"{res[0].__class__}: {res[0]}")
-    #     return data.Atom(res[0])
-
-    # if isinstance(res, (str, data.ConsCell, data.Atom)):
-    #     if dbg:
-    #         print(f"Return a single value: {res}")
-    #     return res
-    # if len(res) == 0:
-    #     # raise IncompleteException("Incomplete expression!")
-    #     return data.Atom('nil')
-
-    # if dbg:
-    #     print(res.__class__, "(", len(res), ") ->", res)
-
-    # try:
-    #     # return result_to_list(res if len(res) > 1 else res[0])
-    #     if len(res) <= 1:
-    #         return data.Atom(res[0])
-    #     return result_to_list(res)
-    # except TypeError as terr:
-    #     print("TypeError:", terr)
-    #     return result_to_list(res) if len(res) > 1 else res[0]
 
 
 # Local Variables: #

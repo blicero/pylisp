@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 18:53:57 krylon>
+# Time-stamp: <2025-03-10 19:20:00 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -42,7 +42,7 @@ class TestBasics(unittest.TestCase):
         """Test listp"""
         test_cases: Final[list[tuple[Any, bool]]] = [
             (None, True),
-            (data.ConsCell(data.Atom("3"), None), True),
+            (data.ConsCell(3, None), True),
             ("Abobo", False)
         ]
 
@@ -55,12 +55,10 @@ class TestAtom(unittest.TestCase):
 
     def test_01_eq(self) -> None:
         """Test checking for equality"""
-        test_cases: Final[list[tuple[data.Atom, Any, bool]]] = [
-            (data.Atom("peter"), "peter", True),
-            (data.Atom("PETER"), data.Atom("peter"), True),
-            (data.Atom("32"), data.Atom("32.0"), True),
-            (data.Atom("PETER"), data.Atom("3"), False),
-            (data.Atom("31"), data.Atom(31), True),
+        test_cases: Final[list[tuple[data.Symbol, Any, bool]]] = [
+            (data.Symbol("peter"), data.Symbol("peter"), True),
+            (data.Symbol("PETER"), data.Symbol("peter"), True),
+            (data.Symbol("PETER"), 3, False),
         ]
 
         for c in test_cases:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Time-stamp: <2025-03-08 17:12:06 krylon>
+# Time-stamp: <2025-03-10 19:15:11 krylon>
 #
 # /home/krylon/sources/trunk/python/lispy/error.py
 # created on 19. 09. 2010
@@ -37,9 +37,13 @@ class LispError(Exception):
     """Base class for errors thrown in the Lisp interpreter"""
 
 
-class NoSuchVariableError(LispError):
+class BindingError(LispError):
     """Indicates a reference to an unbound name"""
 
 
 class CantHappenError(LispError):
     """Indicates an error I had considered impossible DID occur"""
+
+
+class TypingError(LispError):
+    """Indicates usage of the wrong type"""

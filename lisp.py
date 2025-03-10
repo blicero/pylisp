@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 18:44:15 krylon>
+# Time-stamp: <2025-03-10 19:30:10 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -38,12 +38,10 @@ from krylisp import common, data, error, parser
 # einem objektorientierten Ansatz zurück kehren.
 
 
-def get_num(v):
+def get_num(v: Any) -> Union[int, float]:
     """Atempt to get the numeric value of its argument."""
     if isinstance(v, (int, float)):
         return v
-    if isinstance(v, data.Atom) and isinstance(v.value, (int, float)):
-        return v.value
     raise error.LispError(f"{v} is not a numerical value!")
 
 
@@ -72,7 +70,7 @@ class LispInterpreter:
         """Print a warning."""
         self.log.warning(args[0], *args[1:])
 
-    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, str, int, float, data.Atom, data.ConsCell]]:
+    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, str, int, float, data.ConsCell]]:
         """Evaluate an Atom."""
         assert atom is not None, "Atom must not be None."
 
@@ -87,18 +85,13 @@ class LispInterpreter:
             case data.Symbol(value):
                 if atom.is_keyword():
                     return atom
-                return env[value]
-            case data.Atom(value):
-                if isinstance(value, (str, int, float)):
-                    return value
-                if isinstance(value, data.Symbol):
-                    if value.is_keyword():
-                        return value
-                    if value.value.upper() == "nil":
-                        return data.EMPTY_LIST
-                    if value.value.upper() == "T":
-                        return data.Symbol("t")
-                    return env[value.value.upper()]
+                if atom.value.upper() == "nil":
+                    return data.EMPTY_LIST
+                if atom.value.upper() == "T":
+                    return data.Symbol("t")
+                return env[value.upper()]
+            case x if isinstance(x, (str, int, float)):
+                return x
             case _:
                 raise TypeError(f"Did not expect {atom.__class__}")
 
@@ -141,7 +134,7 @@ class LispInterpreter:
     #
     # Freitag, 08. 10. 2010, 01:36
     # Ich glaube, ich muss progn als special form implementieren!!!
-    def eval_list(self, lst, env=None) -> Union[data.Atom, data.Symbol, data.ConsCell, data.Function, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+    def eval_list(self, lst, env=None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
         self.dbg("Evaluating list %s", lst)
@@ -178,25 +171,25 @@ class LispInterpreter:
                     if self.eval_expr(lst.car(), env) >= self.eval_expr(data.cadr(lst), env):
                         return data.ConsCell(None, None)
                     lst = lst.cdr()
-                return data.Atom('t')
+                return data.Symbol('t')
             if lst.car() == '>':
                 lst = lst.cdr()
                 while not data.nullp(lst.cdr()):
                     if self.eval_expr(lst.car(), env) <= self.eval_expr(data.cadr(lst), env):
                         return data.ConsCell(None, None)
                     lst = lst.cdr()
-                return data.Atom('t')
+                return data.Symbol('t')
             if lst.car() == '=':
                 lst = lst.cdr()
                 while not data.nullp(lst.cdr()):
                     if self.eval_expr(lst.car(), env) != self.eval_expr(data.cadr(lst), env):
                         return data.ConsCell(None, None)
                     lst = lst.cdr()
-                return data.Atom('t')
+                return data.Symbol('t')
             if lst.car() == 'eq':
                 if self.eval_expr(lst[1], env) == self.eval_expr(lst[2], env):
-                    return data.Atom('t')
-                return data.Atom('nil')
+                    return data.Symbol('t')
+                return data.Symbol('nil')
             if lst.car() == 'if':
                 if len(lst) != 4:
                     raise error.LispError(
@@ -234,9 +227,9 @@ class LispInterpreter:
                         return val
                 return data.EMPTY_LIST
             if lst.car() == 'not':
-                return data.Atom('nil') \
+                return data.Symbol('nil') \
                     if not data.nullp(self.eval_expr(lst[1], env)) \
-                    else data.Atom('t')
+                    else data.Symbol('t')
             if lst.car() == 'quote':
                 return lst[1]
             if lst.car() in ('quit', 'exit'):
@@ -263,31 +256,31 @@ class LispInterpreter:
                     return data.ConsCell(None, None)
                 return arg.cdr()
             if lst.car() == 'listp':
-                return data.Atom('t') if data.listp(self.eval_expr(lst[1], env)) \
-                    else data.Atom('nil')
+                return data.Symbol('t') if data.listp(self.eval_expr(lst[1], env)) \
+                    else data.Symbol('nil')
             if lst.car() == 'null':
-                return data.Atom('t') if data.nullp(self.eval_expr(lst[1], env)) \
-                    else data.Atom('nil')
+                return data.Symbol('t') if data.nullp(self.eval_expr(lst[1], env)) \
+                    else data.Symbol('nil')
             if lst.car() == 'list':
                 return data.ConsCell.fromList([self.eval_expr(x, env) for x in lst.cdr()])
             if lst.car() == 'atom':
                 arg = self.eval_expr(lst[1], env)
-                if isinstance(arg, (data.Atom, int, float)) or data.nullp(arg):
-                    return data.Atom('t')
-                return data.Atom('nil')
+                if isinstance(arg, (data.Symbol, int, float)) or data.nullp(arg):
+                    return data.Symbol('t')
+                return data.Symbol('nil')
             if lst.car() == 'lambda':
                 return lst
             if lst.car() == 'defun':
                 assert len(lst.cdr()) >= 3, \
                     "A Function definition needs at least three arguments (name, arglist, body)"
                 lst = lst.cdr()
-                env.get_global()[lst[0]] = data.ConsCell(data.Atom("lambda"), lst.cdr())
+                env.get_global()[lst[0]] = data.ConsCell(data.Symbol("lambda"), lst.cdr())
                 return lst[0]
             if lst.car() == 'defmacro':
                 assert len(lst.cdr()) >= 3, \
                     "A Macro definition needs at least three arguments (name, arglist, body)"
                 macro = lst.cdr()
-                env.get_global()[macro[0]] = data.ConsCell(data.Atom('macro'), macro.cdr())
+                env.get_global()[macro[0]] = data.ConsCell(data.Symbol('macro'), macro.cdr())
                 # warn("Macros are not implemented yet!")
                 return macro[0]
             if lst.car() == 'backquote':
@@ -298,7 +291,7 @@ class LispInterpreter:
             if lst.car() == 'let':
                 let_env = {}
                 for symbol, value in lst[1]:
-                    assert isinstance(symbol, (data.Atom, str)), \
+                    assert isinstance(symbol, (data.Symbol, str)), \
                         "A let-variable must be a symbol!"
                     let_env[symbol] = self.eval_expr(value, env)
                 lenv = data.Environment(env, let_env)
@@ -316,7 +309,7 @@ class LispInterpreter:
                     lst = lst.cdr()
                     val = lst.car()
                     lst = lst.cdr()
-                    if not isinstance(sym, data.Atom):
+                    if not isinstance(sym, data.Symbol):
                         raise error.LispError(f"{sym} is not a symbol!")
                     env[sym] = self.eval_expr(val, env)
                 return val
@@ -343,7 +336,7 @@ class LispInterpreter:
                         init_val = var_def[1]
                         update = var_def[2]
 
-                        if isinstance(sym, data.Atom):
+                        if isinstance(sym, data.Symbol):
                             sym = sym.value
 
                         var_dict[sym] = self.eval_expr(init_val, env)
@@ -374,7 +367,7 @@ class LispInterpreter:
                 arg = self.eval_expr(lst[1], env)
                 self.dbg("Setting debug flag to %s", arg)
                 self.debug = not data.nullp(arg)
-                return data.Atom('t') if self.debug else data.Atom('nil')
+                return data.Symbol('t') if self.debug else data.Symbol('nil')
 
             # Ich habe so die Idee, dass ich eine Kombination aus den
             # Konventionen für Common Lisp und Scheme verwende:
@@ -388,7 +381,7 @@ class LispInterpreter:
             # Mmmh, damit Makros richtig funktionieren, darf ich nicht alle
             # Argumente evaluieren, bevor dingsen...
             op = self.eval_expr(lst[0], env)
-            if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Atom)):
+            if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Symbol)):
                 return lst
             if op[0] == 'lambda':
                 arg_list = data.ConsCell.fromList(
@@ -479,8 +472,6 @@ class LispInterpreter:
         match expr:
             case None:
                 return data.EMPTY_LIST
-            case data.Atom(_):
-                return self.eval_atom(expr)
             case data.Symbol(_):
                 return self.eval_atom(expr)
             case data.ConsCell(_, _):
@@ -524,10 +515,7 @@ class LispInterpreter:
             env = self.env
 
         self.dbg("Evaluating back-quoted expression %s", expr)
-        # assert isinstance(expr, data.ConsCell), "Backquote expression must be a linked list!"
-        # assert len(expr) == 2, "A Backquote can only refer to a single item."
-        # assert expr[0] == 'backquote', \
-        #     "The first element of a backquote expression must be the Atom 'backquote'"
+
         if isinstance(expr, data.ConsCell):  # pylint: disable-msg=R1702
             exlst = []
             for subexpr in expr:
@@ -543,12 +531,12 @@ class LispInterpreter:
                         # das offenbar in Common Lisp - zumindest in CLisp  -
                         # normal aufgelöst.
                         res = None
-                        if isinstance(subexpr[1], data.Atom):
+                        if isinstance(subexpr[1], data.Symbol):
                             res = self.eval_atom(subexpr[1], env)
                         elif isinstance(subexpr[1], data.ConsCell):
                             res = self.eval_list(subexpr[1], env)
 
-                        if isinstance(res, data.Atom):
+                        if data.is_atomic(res):
                             exlst.append(self.eval_atom(res, env) if res in env else res)
                         elif isinstance(res, data.ConsCell):
                             for item in res:
@@ -566,7 +554,7 @@ class LispInterpreter:
             # else:
             #     return data.ConsCell.fromList(exlst)
             return data.ConsCell.fromList(exlst)
-        if isinstance(expr, (data.Atom, str, int, float)):
+        if data.is_atomic(expr):
             return expr
         raise error.LispError(
             f"Invalid type for backquote expression: {expr.__class__} - {expr}")

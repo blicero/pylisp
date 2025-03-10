@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2024-05-19 21:15:14 krylon>
+# Time-stamp: <2025-03-10 19:00:10 krylon>
 #
 # /data/code/python/krylisp/test_parser.py
 # created on 19. 05. 2024
@@ -29,10 +29,10 @@ class TestParser(unittest.TestCase):
 
     def test_01_atoms(self) -> None:
         """Test parsing atoms"""
-        test_cases: Final[list[tuple[str, Optional[Union[data.ConsCell, data.Atom]], bool]]] = [
-            ("31", data.Atom(31), False),
-            ("+", data.Atom("+"), False),
-            ("", data.Atom("nil"), False),
+        test_cases: Final[list[tuple[str, Optional[Union[data.ConsCell, str, int, float, data.Symbol]], bool]]] = [
+            ("31", 31, False),
+            ("+", data.Symbol("+"), False),
+            ("", data.Symbol("nil"), False),
         ]
 
         for c in test_cases:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 18:25:02 krylon>
+# Time-stamp: <2025-03-10 19:29:33 krylon>
 #
 # /data/code/python/krylisp/test_interpreter.py
 # created on 10. 03. 2025
@@ -28,12 +28,12 @@ def default_env() -> data.Environment:
 
     env["pi"] = 3.141592
     env["peter"] = "Wer das liest, ist doof."
-    env["mu"] = data.Atom(":abobo")
+    env["mu"] = data.Symbol(":abobo")
 
     return env
 
 
-class TestParser(unittest.TestCase):
+class TestInterpreter(unittest.TestCase):
     """Test the interpreter."""
 
     def test_01_atoms(self) -> None:
@@ -41,16 +41,18 @@ class TestParser(unittest.TestCase):
         interpreter = lisp.LispInterpreter(default_env())
 
         test_cases = [
-            (data.Atom("pi"), 3.141592, False),
-            (data.Atom(":hallo"), data.Atom(":hallo"), False),
+            (data.Symbol("pi"), 3.141592, False),
+            (data.Symbol(":hallo"), data.Symbol(":hallo"), False),
         ]
 
         for c in test_cases:
             try:
                 result = interpreter.eval_expr(c[0])
+                print(f"(Eval {c[0]} => {result.__class__} {result}")
                 self.assertEqual(result, c[1])
             except Exception as err:  # pylint: disable-msg=W0718
-                self.assertTrue(c[2], f"Unexpected {err.__class__}: {err}")
+                if not c[2]:
+                    self.fail(f"{err.__class__}: {err}")
 
 # Local Variables: #
 # python-indent: 4 #
