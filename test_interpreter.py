@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 20:33:01 krylon>
+# Time-stamp: <2025-03-10 20:41:17 krylon>
 #
 # /data/code/python/krylisp/test_interpreter.py
 # created on 10. 03. 2025
@@ -64,6 +64,7 @@ class TestInterpreter(unittest.TestCase):
             ("(+ 5 7)", 12, False),
             ("(* 8 8)", 64, False),
             ("(/ 32 0)", None, True),
+            ("(defun id (x) x)", data.Symbol("id"), False),
         ]
 
         for c in test_cases:
