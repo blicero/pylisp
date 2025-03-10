@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-08 17:47:14 krylon>
+# Time-stamp: <2025-03-10 18:32:46 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -128,6 +128,10 @@ class Atom:
 
     def __nonzero__(self):
         return self != 'nil'
+
+    def is_keyword(self) -> bool:
+        """Return True if self is a keyword symbol (i.e. begins with a colon)"""
+        return isinstance(self.value, str) and self.value[0] == ':'
 
 
 # Ich muss mur noch einmal Gedanken über die Darstellung von nil machen... ;-/
