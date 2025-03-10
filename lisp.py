@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 19:30:10 krylon>
+# Time-stamp: <2025-03-10 19:33:46 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -94,26 +94,6 @@ class LispInterpreter:
                 return x
             case _:
                 raise TypeError(f"Did not expect {atom.__class__}")
-
-        # if isinstance(atom, data.Atom):
-        #     at_val = atom.value
-        # elif isinstance(atom, (str, int, float)):
-        #     # at_val = atom
-        #     return atom
-        # else:
-        #     raise error.LispError(f"Atom is neither a String nor an Atom: {atom}")
-
-        # if at_val == 'nil':
-        #     return data.EMPTY_LIST
-        # # Da ein Atom ja kein String ist, sollte ich überlegen, ob ich nicht
-        # # schon beim Erzeugen eines Atoms prüfen sollte, ob das eine Zahl ist...
-        # if at_val == 't':
-        #     return data.Atom('t')
-        # if at_val.startswith(":"):
-        #     return atom
-        # if isinstance(at_val, (int, float)):
-        #     return at_val
-        # return env[at_val]
 
     # Ich muss mir noch überlegen, wie viel von der Sprache ich fest in den
     # Interpreter einbauen bzw. auf der reinen Lisp-Ebene implementieren will.
