@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-11 15:36:23 krylon>
+# Time-stamp: <2025-03-11 20:17:11 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -23,6 +23,7 @@ import operator
 import sys
 import time
 import traceback
+import warnings
 from functools import reduce
 from typing import Any, Final, Optional, Union
 
@@ -36,6 +37,61 @@ from krylisp import common, data, error, parser
 # Environment hinaus geht.
 # DAS wiederum heißt, ich werde wohl - nach einem missglückten Anlauf - zu
 # einem objektorientierten Ansatz zurück kehren.
+
+special_forms: Final[set[str]] = {
+    "+",
+    "-",
+    "*",
+    "/",
+    "mod",
+    "sqrt",
+    "<",
+    ">",
+    "=",
+    "eq",
+    "if",
+    "return",
+    "print",
+    "and",
+    "or",
+    "not",
+    "quote",
+    "quit",
+    "exit",
+    "cons",
+    "car",
+    "cdr",
+    "listp",
+    "null",
+    "atom",
+    "lambda",
+    "defun",
+    "defmacro",
+    "backquote",
+    "gensym",
+    "let",
+    "setq",
+    "apply",
+    "do",
+    "eval",
+    "time",
+    "load",
+    "dbg",
+}
+
+
+def is_special(sym: Any) -> bool:
+    """Return True if sym is a special form."""
+    match sym:
+        case str(x):
+            return x.lower() in special_forms
+        case data.Symbol(x):
+            return x.lower() in special_forms
+        case _:
+            warnings.warn(f"Parameter to is_special has unexpected type {sym.__class__}",
+                          UserWarning,
+                          2)
+            return False
 
 
 def get_num(v: Any) -> Union[int, float]:
@@ -116,7 +172,7 @@ class LispInterpreter:
     #
     # Freitag, 08. 10. 2010, 01:36
     # Ich glaube, ich muss progn als special form implementieren!!!
-    def eval_list(self, lst, env=None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+    def eval_list(self, lst: Optional[data.ConsCell], env=None) -> Optional[Union[data.Symbol, data.ConsCell, data.Function, int, float, str]]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
         self.dbg("Evaluating list %s", lst)
@@ -124,248 +180,29 @@ class LispInterpreter:
         if env is None:
             env = self.env
 
-        if data.nullp(lst):
+        if lst is None or data.nullp(lst):
             return data.EMPTY_LIST
+        if is_special(lst.head):
+            return self.eval_special(lst, env)
 
-        if isinstance(lst, data.ConsCell):
-            match lst.car():
-                case data.Symbol("+"):
-                    return sum(self.eval_expr(x, env) for x in lst.cdr())
-                case data.Symbol("-"):
-                    lst = lst.cdr()
-                    res = self.eval_expr(lst.car(), env)
-                    for val in lst.cdr():
-                        res -= self.eval_expr(val, env)
-                    return res
-                case data.Symbol("*"):
-                    return reduce(operator.mul, [self.eval_expr(x, env) for x in lst.cdr()])
-                case data.Symbol("/"):
-                    try:
-                        return reduce(operator.truediv, [self.eval_expr(x, env) for x in lst.cdr()])
-                    except ZeroDivisionError as err:
-                        raise error.DivByZeroError("Division by zero is not allowed") from err
-                case data.Symbol("mod"):
-                    return self.eval_expr(lst[1], env) % self.eval_expr(lst[2], env)
-                case data.Symbol("sqrt"):
-                    num_value = get_num(self.eval_expr(lst[1], env))
-                    return math.sqrt(num_value)
-                case data.Symbol("<"):
-                    lst = lst.cdr()
-                    while not data.nullp(lst.cdr()):
-                        if self.eval_expr(lst.car(), env) >= self.eval_expr(data.cadr(lst), env):
-                            return data.ConsCell(None, None)
-                        lst = lst.cdr()
-                    return data.Symbol('t')
-                case data.Symbol(">"):
-                    lst = lst.cdr()
-                    while not data.nullp(lst.cdr()):
-                        if self.eval_expr(lst.car(), env) <= self.eval_expr(data.cadr(lst), env):
-                            return data.ConsCell(None, None)
-                        lst = lst.cdr()
-                    return data.Symbol('t')
-                case data.Symbol("="):
-                    lst = lst.cdr()
-                    while not data.nullp(lst.cdr()):
-                        if self.eval_expr(lst.car(), env) != self.eval_expr(data.cadr(lst), env):
-                            return data.ConsCell(None, None)
-                        lst = lst.cdr()
-                    return data.Symbol('t')
-                case data.Symbol("eq"):
-                    if self.eval_expr(lst[1], env) == self.eval_expr(lst[2], env):
-                        return data.Symbol('t')
-                    return data.Symbol('nil')
-                case data.Symbol("if"):
-                    if len(lst) != 4:
-                        raise error.LispError(
-                            "'if' needs exactly three parameters: condition, then-part, else-part!")
+        # Ich habe so die Idee, dass ich eine Kombination aus den
+        # Konventionen für Common Lisp und Scheme verwende:
+        # Das erste Element wird genau so interpretiert wie alle anderen
+        # Elemente in der Liste, ABER alle Parameter werden von links
+        # nach rechts ausgewertet.
+        # Dafür brauche ich eigentlich so etwas wie map, nur dass eine
+        # verkettete Liste anstelle einer normalen Python-Liste zurück
+        # kommen muss.
+        # Das könnte ich natürlich erstmal faken...
+        # Mmmh, damit Makros richtig funktionieren, darf ich nicht alle
+        # Argumente evaluieren, bevor dingsen...
+        op = self.eval_expr(lst[0], env)
 
-                    self.dbg("Evaluating condition of if-expression.")
-                    cond = not data.nullp(self.eval_expr(lst[1], env))
-                    self.dbg("--> %s", cond)
-                    if cond:
-                        self.dbg("if-condition is true.")
-                        return self.eval_expr(lst[2], env)
-                    self.dbg("if-condition is false.")
-                    return self.eval_expr(lst[3], env)
-                case data.Symbol("return"):
-                    assert len(lst) == 2
-                    return self.eval_expr(lst[1], env)
-                case data.Symbol("print"):
-                    assert len(lst) == 2
-                    val = self.eval_expr(lst[1], env)
-                    print(val)
-                    return val
-                case data.Symbol("and"):
-                    val = data.EMPTY_LIST
-                    for expr in lst.cdr():
-                        val = self.eval_expr(expr, env)
-                        if data.nullp(val):
-                            return data.EMPTY_LIST
-                    return val
-                case data.Symbol("or"):
-                    val = data.EMPTY_LIST
-                    for expr in lst.cdr():
-                        val = self.eval_expr(expr, env)
-                        if not data.nullp(val):
-                            return val
-                    return data.EMPTY_LIST
-                case data.Symbol("not"):
-                    return data.Symbol('nil') \
-                        if not data.nullp(self.eval_expr(lst[1], env)) \
-                        else data.Symbol('t')
-                case data.Symbol("quote"):
-                    return lst[1]
-                case data.Symbol("quit"), data.Symbol("exit"):
-                    print("So long, and thanks for all the parentheses...")
-                    sys.exit(0)
-                case data.Symbol("cons"):
-                    # (cons 1 ()) ergibt im Moment (1 None)!!!
-                    arg1 = self.eval_expr(lst[1], env)
-                    arg2 = self.eval_expr(lst[2], env)
-                    if not data.nullp(arg2):
-                        return data.cons(arg1, arg2)
-                    return data.ConsCell(arg1, None)
-                case data.Symbol("car"):
-                    arg = self.eval_expr(lst[1], env)
-                    if not data.listp(arg):
-                        raise error.LispError("Argument to car must be a list!")
-                    if data.nullp(arg):
-                        return data.ConsCell(None, None)
-                    return arg[0]
-                case data.Symbol("cdr"):
-                    arg = self.eval_expr(lst[1], env)
-                    if not data.listp(arg):
-                        raise error.LispError("Argument to cdr must be a list!")
-                    if data.nullp(arg):
-                        return data.ConsCell(None, None)
-                    return arg.cdr()
-                case data.Symbol("listp"):
-                    return data.Symbol('t') if data.listp(self.eval_expr(lst[1], env)) \
-                        else data.Symbol('nil')
-                case data.Symbol("null"):
-                    return data.Symbol('t') if data.nullp(self.eval_expr(lst[1], env)) \
-                        else data.Symbol('nil')
-                case data.Symbol("atom"):
-                    arg = self.eval_expr(lst[1], env)
-                    if isinstance(arg, (data.Symbol, int, float)) or data.nullp(arg):
-                        return data.Symbol('t')
-                    return data.Symbol('nil')
-                case data.Symbol("lambda"):
-                    return lst
-                case data.Symbol("defun"):
-                    assert len(lst.cdr()) >= 3, \
-                        "A Function definition needs at least three arguments (name, arglist, body)"
-                    lst = lst.cdr()
-                    env.get_global()[lst[0]] = data.ConsCell(data.Symbol("lambda"), lst.cdr())
-                    return lst[0]
-                case data.Symbol("defmacro"):
-                    assert len(lst.cdr()) >= 3, \
-                        "A Macro definition needs at least three arguments (name, arglist, body)"
-                    macro = lst.cdr()
-                    env.get_global()[macro[0]] = data.ConsCell(data.Symbol('macro'), macro.cdr())
-                    # warn("Macros are not implemented yet!")
-                    return macro[0]
-                case data.Symbol("backquote"):
-                    return self.eval_backquote(lst, env)
-                case data.Symbol("gensym"):
-                    self.gensym_counter += 1
-                    return f"#:{self.gensym_counter:-012d}"
-                case data.Symbol("let"):
-                    let_env = {}
-                    for symbol, value in lst[1]:
-                        assert isinstance(symbol, (data.Symbol, str)), \
-                            "A let-variable must be a symbol!"
-                        let_env[symbol] = self.eval_expr(value, env)
-                    lenv = data.Environment(env, let_env)
-                    res = data.NIL
-                    for expr in lst.cdr().cdr():
-                        res = self.eval_expr(expr, lenv)
-                    return res
-                case data.Symbol("setq"):
-                    assert even(len(lst.cdr())), \
-                        "The parameters to setq must be a list of symbols and values."
-                    lst = lst.cdr()
-                    val = None
-                    while not data.nullp(lst):
-                        sym = lst.car()
-                        lst = lst.cdr()
-                        val = lst.car()
-                        lst = lst.cdr()
-                        if not isinstance(sym, data.Symbol):
-                            raise error.LispError(f"{sym} is not a symbol!")
-                        env[sym] = self.eval_expr(val, env)
-                    return val
-                case data.Symbol("apply"):
-                    assert len(lst) == 3, "Apply takes exactly two arguments (function and arglist)!"
-                    # Wenn lst[2] eine Liste ist, darf ich lst[1] nicht einfach davor consen... ;-/
-                    return self.eval_expr(data.cons(lst[1], self.eval_expr(lst[2], env)), env)
-                case data.Symbol("do"):
-                    if len(lst) < 3:
-                        raise error.LispError(
-                            "do needs at least two arguments (init-list and end-list)!")
-                    var_dict = {}
-                    update_forms = {}
-                    body = lst.cdr().cdr().cdr()
+        if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Symbol)):
+            return lst
 
-                    self.dbg("Evaluating do-loop: %s", lst)
-
-                    end_expr = lst[2][0]
-                    result_expr = lst[2][1]
-
-                    if not data.nullp(lst[1]):
-                        for var_def in lst[1]:
-                            sym = var_def[0]
-                            init_val = var_def[1]
-                            update = var_def[2]
-
-                            if isinstance(sym, data.Symbol):
-                                sym = sym.value
-
-                            var_dict[sym] = self.eval_expr(init_val, env)
-                            update_forms[sym] = update
-
-                    loop_env = data.Environment(env, var_dict)
-
-                    while data.nullp(self.eval_expr(end_expr, loop_env)):
-                        for expr in body:
-                            self.eval_expr(expr, loop_env)
-                        for sym, expr in update_forms.items():
-                            loop_env[sym] = self.eval_expr(expr, loop_env)
-
-                    return self.eval_expr(result_expr, loop_env)
-                case data.Symbol("eval"):
-                    return self.eval_expr(lst[2], env)
-                case data.Symbol("time"):
-                    before: Final[float] = time.time()
-                    res = self.eval_expr(lst[1], env)
-                    after: Final[float] = time.time()
-                    delta: Final[float] = after - before
-                    print(f"Evaluating {lst[1]} took {delta} seconds.")
-                    return res
-                case data.Symbol("load"):
-                    path = lst[1]
-                    return load_file(path, env)
-                case data.Symbol("dbg"):
-                    arg = self.eval_expr(lst[1], env)
-                    self.dbg("Setting debug flag to %s", arg)
-                    self.debug = not data.nullp(arg)
-                    return data.Symbol('t') if self.debug else data.Symbol('nil')
-
-            # Ich habe so die Idee, dass ich eine Kombination aus den
-            # Konventionen für Common Lisp und Scheme verwende:
-            # Das erste Element wird genau so interpretiert wie alle anderen
-            # Elemente in der Liste, ABER alle Parameter werden von links
-            # nach rechts ausgewertet.
-            # Dafür brauche ich eigentlich so etwas wie map, nur dass eine
-            # verkettete Liste anstelle einer normalen Python-Liste zurück
-            # kommen muss.
-            # Das könnte ich natürlich erstmal faken...
-            # Mmmh, damit Makros richtig funktionieren, darf ich nicht alle
-            # Argumente evaluieren, bevor dingsen...
-            op = self.eval_expr(lst[0], env)
-            if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Symbol)):
-                return lst
-            if op[0] == data.Symbol('lambda'):
+        match op[0]:
+            case data.Symbol("lambda"):
                 self.dbg("Evaluate function call to %s", op)
                 arg_list = data.ConsCell.fromList(
                     [self.eval_expr(x, env) for x in lst.cdr()]) \
@@ -406,7 +243,7 @@ class LispInterpreter:
                     if isinstance(expr, data.ConsCell) and expr[0] == 'return':
                         break
                 return res
-            if op[0] == 'macro':
+            case data.Symbol("macro"):
                 # Hier muss ich zwei Mal evaluieren, einmal, um das Macro zu
                 # expandieren, und einmal, um den resultierenden Code zu
                 # evaluieren. Mmmmh...
@@ -422,7 +259,7 @@ class LispInterpreter:
                     arg_list = arg_list.cdr()
                     formal_args = formal_args.cdr()
                 macro_env = data.Environment(env, expand_dict)
-                res = []
+                body: list = []
 
                 # Jaaaa, hier muss ich wieder darauf auchten, dass die
                 # evaluierten Ausdrücke vermutlich Listen sind, und dass ich
@@ -430,11 +267,12 @@ class LispInterpreter:
                 # for stmt in reversed(op.cdr().cdr()):
                 #     res = data.ConsCell(eval_macro_expr(stmt, macro_env), res)
                 for subexpr in op.cdr().cdr():
-                    res.append(self.eval_macro_expr(subexpr, macro_env))
+                    body.append(self.eval_macro_expr(subexpr, macro_env))
 
-                res = data.ConsCell.fromList(res) if len(res) != 1 else res[0]
+                expanded: data.ConsCell = \
+                    data.ConsCell.fromList(body) if len(body) != 1 else body[0]
 
-                self.dbg("MMM Macro\n\t%s\nexpands to\n\t--> %s", op, res)
+                self.dbg("MMM Macro\n\t%s\nexpands to\n\t--> %s", op, expanded)
 
                 # Wenn alles läuft, wie ich mir das vorstelle, ist res an
                 # dieser Stelle das expandierte Makro. Dann müsste ich den
@@ -442,10 +280,300 @@ class LispInterpreter:
                 # wirklich im Parser statt finden, oder ich müsste Reader und
                 # Evaluator eleganter verknüpfen.
                 # raise error.LispError, "Macros are not implemented, yet."
-                return self.eval_expr(res, env)
-            return lst
+                return self.eval_expr(expanded, env)
 
         raise error.LispError(f"List is neither nil nor a Lisp List: {lst}")
+
+    def eval_special(self, form: data.ConsCell, env: Optional[data.Environment] = None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+        """Evaluate a special form"""
+        assert is_special(form.head)
+        assert isinstance(form.head, data.Symbol)
+
+        lst: Optional[data.ConsCell] = form.tail
+
+        match form.head:
+            case data.Symbol("+"):
+                values = [self.eval_expr(x, env) for x in form.cdr()]
+                acc: Union[int, float] = 0
+
+                for v in values:
+                    match v:
+                        case int(x):
+                            acc += x
+                        case float(x):
+                            acc += x
+                        case _:
+                            raise error.TypingError(f"Unexpected type {v.__class__}")
+                return acc
+            case data.Symbol("-"):
+                if lst is None:
+                    raise error.EvalError("Special form - requires at least one argument.")
+                res = self.eval_expr(lst.car(), env)
+                if not isinstance(res, (int, float)):
+                    raise error.TypingError(f"All arguments to special form - must evaluate to numbers, not {res.__class__}")
+                for val in lst.cdr():
+                    e = self.eval_expr(val, env)
+                    if isinstance(e, (int, float)):
+                        res -= e
+                    else:
+                        raise error.TypingError(f"Expected number, not {e.__class__}")
+                return res
+            case data.Symbol("*"):
+                assert lst is not None
+                return reduce(operator.mul, [self.eval_expr(x, env) for x in lst.cdr()])
+            case data.Symbol("/"):
+                try:
+                    return reduce(operator.truediv, [self.eval_expr(x, env) for x in form.cdr()])
+                except ZeroDivisionError as err:
+                    raise error.DivByZeroError("Division by zero is not allowed") from err
+            case data.Symbol("mod"):
+                assert lst is not None
+                v1 = self.eval_expr(lst[1], env)
+                v2 = self.eval_expr(lst[2], env)
+                assert isinstance(v1, (int, float))
+                assert isinstance(v2, (int, float))
+                return v1 % v2  # noqa: S001
+            case data.Symbol("sqrt"):
+                assert lst is not None
+                num_value = get_num(self.eval_expr(lst[1], env))
+                return math.sqrt(num_value)
+            case data.Symbol("<"):
+                assert lst is not None
+                lst = lst.cdr()
+                while not data.nullp(lst.cdr()):
+                    if self.eval_expr(lst.car(), env) >= self.eval_expr(data.cadr(lst), env):  # type: ignore
+                        return data.ConsCell(None, None)
+                    lst = lst.cdr()
+                return data.Symbol('t')
+            case data.Symbol(">"):
+                assert lst is not None
+                lst = lst.cdr()
+                while not data.nullp(lst):
+                    if self.eval_expr(lst.car(), env) <= self.eval_expr(data.cadr(lst), env):  # type: ignore
+                        return data.ConsCell(None, None)
+                    lst = lst.cdr()
+                return data.Symbol('t')
+            case data.Symbol("="):
+                assert lst is not None
+                lst = lst.cdr()
+                while not data.nullp(lst.cdr()):
+                    if self.eval_expr(lst.car(), env) != self.eval_expr(data.cadr(lst), env):
+                        return data.ConsCell(None, None)
+                    lst = lst.cdr()
+                return data.Symbol('t')
+            case data.Symbol("eq"):
+                assert lst is not None
+                if self.eval_expr(lst[1], env) == self.eval_expr(lst[2], env):
+                    return data.Symbol('t')
+                return data.Symbol('nil')
+            case data.Symbol("if"):
+                assert lst is not None
+                if len(lst) != 4:
+                    raise error.LispError(
+                        "'if' needs exactly three parameters: condition, then-part, else-part!")
+
+                self.dbg("Evaluating condition of if-expression.")
+                cond = not data.nullp(self.eval_expr(lst[1], env))
+                self.dbg("--> %s", cond)
+                if cond:
+                    self.dbg("if-condition is true.")
+                    return self.eval_expr(lst[2], env)
+                self.dbg("if-condition is false.")
+                return self.eval_expr(lst[3], env)
+            case data.Symbol("return"):
+                assert lst is not None
+                assert len(lst) == 2
+                return self.eval_expr(lst[1], env)
+            case data.Symbol("print"):
+                assert lst is not None
+                assert len(lst) == 2
+                val = self.eval_expr(lst[1], env)
+                print(val)
+                return val
+            case data.Symbol("and"):
+                assert lst is not None
+                val = data.EMPTY_LIST
+                for expr in lst.cdr():
+                    val = self.eval_expr(expr, env)
+                    if data.nullp(val):
+                        return data.EMPTY_LIST
+                return val
+            case data.Symbol("or"):
+                assert lst is not None
+                val = data.EMPTY_LIST
+                for expr in lst.cdr():
+                    val = self.eval_expr(expr, env)
+                    if not data.nullp(val):
+                        return val
+                return data.EMPTY_LIST
+            case data.Symbol("not"):
+                assert lst is not None
+                return data.Symbol('nil') \
+                    if not data.nullp(self.eval_expr(lst[1], env)) \
+                    else data.Symbol('t')
+            case data.Symbol("quote"):
+                assert lst is not None
+                return lst[1]
+            case data.Symbol("quit"), data.Symbol("exit"):
+                print("So long, and thanks for all the parentheses...")
+                sys.exit(0)
+            case data.Symbol("cons"):
+                assert lst is not None
+                arg1 = self.eval_expr(lst[1], env)
+                arg2 = self.eval_expr(lst[2], env)
+                if not data.nullp(arg2):
+                    return data.cons(arg1, arg2)
+                return data.ConsCell(arg1, None)
+            case data.Symbol("car"):
+                assert lst is not None
+                arg = self.eval_expr(lst[1], env)
+                match arg:
+                    case data.ConsCell(car, _):
+                        assert isinstance(car, (float, int, str, data.Symbol, data.ConsCell, data.Function))
+                        return car
+                    case None:
+                        return data.EMPTY_LIST
+                    case _:
+                        raise error.TypingError(f"Expected a list, got {arg.__class__} {arg}")
+            case data.Symbol("cdr"):
+                assert lst is not None
+                arg = self.eval_expr(lst[1], env)
+                if not data.listp(arg):
+                    raise error.LispError("Argument to cdr must be a list!")
+                if data.nullp(arg):
+                    return data.ConsCell(None, None)
+                assert isinstance(arg, data.ConsCell)
+                return arg.cdr()
+            case data.Symbol("listp"):
+                assert lst is not None
+                return data.Symbol('t') if data.listp(self.eval_expr(lst[1], env)) \
+                    else data.Symbol('nil')
+            case data.Symbol("null"):
+                assert lst is not None
+                return data.Symbol('t') if data.nullp(self.eval_expr(lst[1], env)) \
+                    else data.Symbol('nil')
+            case data.Symbol("atom"):
+                assert lst is not None
+                arg = self.eval_expr(lst[1], env)
+                if isinstance(arg, (data.Symbol, int, float)) or data.nullp(arg):
+                    return data.Symbol('t')
+                return data.Symbol('nil')
+            case data.Symbol("lambda"):
+                assert lst is not None
+                return lst
+            case data.Symbol("defun"):
+                assert lst is not None
+                assert len(lst.cdr()) >= 3, \
+                    "A Function definition needs at least three arguments (name, arglist, body)"
+                lst = lst.cdr()
+                assert env is not None
+                env.get_global()[lst[0]] = data.ConsCell(data.Symbol("lambda"), lst.cdr())
+                return lst[0]
+            case data.Symbol("defmacro"):
+                assert lst is not None
+                assert len(lst.cdr()) >= 3, \
+                    "A Macro definition needs at least three arguments (name, arglist, body)"
+                macro = lst.cdr()
+                assert env is not None
+                env.get_global()[macro[0]] = data.ConsCell(data.Symbol('macro'), macro.cdr())
+                # warn("Macros are not implemented yet!")
+                return macro[0]
+            case data.Symbol("backquote"):
+                return self.eval_backquote(lst, env)
+            case data.Symbol("gensym"):
+                self.gensym_counter += 1
+                return f"#:{self.gensym_counter:-012d}"
+            case data.Symbol("let"):
+                let_env = {}
+                assert lst is not None
+                for symbol, value in lst[1]:
+                    assert isinstance(symbol, (data.Symbol, str)), \
+                        "A let-variable must be a symbol!"
+                    let_env[symbol] = self.eval_expr(value, env)
+                lenv = data.Environment(env, let_env)
+                res = data.NIL
+                for expr in lst.cdr().cdr():
+                    res = self.eval_expr(expr, lenv)
+                return res
+            case data.Symbol("setq"):
+                assert lst is not None
+                assert even(len(lst.cdr())), \
+                    "The parameters to setq must be a list of symbols and values."
+                lst = lst.cdr()
+                val = None
+                while not data.nullp(lst):
+                    sym = lst.car()
+                    lst = lst.cdr()
+                    val = lst.car()
+                    lst = lst.cdr()
+                    if not isinstance(sym, data.Symbol):
+                        raise error.LispError(f"{sym} is not a symbol!")
+                    assert env is not None
+                    env[sym] = self.eval_expr(val, env)
+                return val
+            case data.Symbol("apply"):
+                assert lst is not None
+                assert len(lst) == 3, "Apply takes exactly two arguments (function and arglist)!"
+                # Wenn lst[2] eine Liste ist, darf ich lst[1] nicht einfach davor consen... ;-/
+                return self.eval_expr(data.cons(lst[1], self.eval_expr(lst[2], env)), env)
+            case data.Symbol("do"):
+                assert lst is not None
+                if len(lst) < 3:
+                    raise error.LispError(
+                        "do needs at least two arguments (init-list and end-list)!")
+                var_dict = {}
+                update_forms = {}
+                body = lst.cdr().cdr().cdr()
+
+                self.dbg("Evaluating do-loop: %s", lst)
+
+                end_expr = lst[2][0]
+                result_expr = lst[2][1]
+
+                if not data.nullp(lst[1]):
+                    for var_def in lst[1]:
+                        sym = var_def[0]
+                        init_val = var_def[1]
+                        update = var_def[2]
+
+                        if isinstance(sym, data.Symbol):
+                            sym = sym.value
+
+                        var_dict[sym] = self.eval_expr(init_val, env)
+                        update_forms[sym] = update
+
+                loop_env = data.Environment(env, var_dict)
+
+                while data.nullp(self.eval_expr(end_expr, loop_env)):
+                    for expr in body:
+                        self.eval_expr(expr, loop_env)
+                    for sym, expr in update_forms.items():
+                        loop_env[sym] = self.eval_expr(expr, loop_env)
+
+                return self.eval_expr(result_expr, loop_env)
+            case data.Symbol("eval"):
+                assert lst is not None
+                return self.eval_expr(lst[2], env)
+            case data.Symbol("time"):
+                assert lst is not None
+                before: Final[float] = time.time()
+                res = self.eval_expr(lst[1], env)
+                after: Final[float] = time.time()
+                delta: Final[float] = after - before
+                print(f"Evaluating {lst[1]} took {delta} seconds.")
+                return res
+            case data.Symbol("load"):
+                assert lst is not None
+                path = lst[1]
+                return load_file(path, env)
+            case data.Symbol("dbg"):
+                assert lst is not None
+                arg = self.eval_expr(lst[1], env)
+                self.dbg("Setting debug flag to %s", arg)
+                self.debug = not data.nullp(arg)
+                return data.Symbol('t') if self.debug else data.Symbol('nil')
+            case _:
+                raise error.EvalError(f"Don't know how handle special form {form.head}")
 
     def eval_expr(self, expr, env=None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate an expression of arbitrary kind or complexity."""
@@ -460,7 +588,10 @@ class LispInterpreter:
             case data.Symbol(_):
                 return self.eval_atom(expr)
             case data.ConsCell(_, _):
-                return self.eval_list(expr)
+                res = self.eval_list(expr)
+                if res is None:
+                    return data.NIL
+                return res
             case _:
                 if isinstance(expr, (int, float, str)):
                     return expr

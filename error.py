@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Time-stamp: <2025-03-10 20:34:05 krylon>
+# Time-stamp: <2025-03-11 18:50:18 krylon>
 #
 # /home/krylon/sources/trunk/python/lispy/error.py
 # created on 19. 09. 2010
@@ -51,3 +51,7 @@ class TypingError(LispError):
 
 class DivByZeroError(LispError):
     """Somebody attempted to divide by zero."""
+
+
+class EvalError(LispError):
+    """Something went wrong during evaluation"""

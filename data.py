@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-11 15:31:57 krylon>
+# Time-stamp: <2025-03-11 20:14:02 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -55,6 +55,23 @@ def is_atomic(x: Any) -> bool:
     return isinstance(x, (int, str, float, Symbol))
 
 
+class Function:
+    """A Function is a callable code object"""
+
+    def __init__(self, args, body, environment) -> None:
+        assert isinstance(environment, (dict, Environment))
+        assert isinstance(args, (list, tuple, ConsCell))
+        assert isinstance(body, ConsCell)
+
+        self.env = environment
+        self.args = args
+        self.body = body
+
+    # Eigentlich muss ich noch dingsen...
+    def __call__(self, *args):
+        """Call the function with the given arguments"""
+
+
 class Symbol:
     """Symbol symbolizes a symbolic token"""
 
@@ -93,15 +110,14 @@ class ConsCell:
 
     __slots__ = ['head', 'tail']
 
-    head: Union[None, Symbol, int, float, str, 'ConsCell']
+    head: Union[None, Symbol, int, float, str, Function, 'ConsCell']
     tail: Optional['ConsCell']
 
     __match_args__ = ('car', 'cdr')
 
     def __init__(self,
-                 car: Union[None, Symbol, int, float, str, 'ConsCell'],
+                 car: Union[None, Symbol, Function, int, float, str, 'ConsCell'],
                  cdr: Optional['ConsCell']) -> None:
-        # assert listp(cdr)
         self.head = car
         self.tail = cdr
 
@@ -190,7 +206,7 @@ class ConsCell:
 
 # Streng genommen wäre NIL ja die leere Liste und nicht None, aber ... wenn ich
 # das mache, verhält sich das ganze Ding auf einmal komisch...
-NIL = None  # ConsCell(None, None)
+NIL = Symbol("nil")
 EMPTY_LIST: Final[ConsCell] = ConsCell(None, None)
 
 
@@ -205,17 +221,17 @@ def cadr(x: ConsCell) -> Any:
     return x.cdr().car()
 
 
-def nullp(x: Union[Symbol, int, float, str, None, ConsCell]) -> bool:
+def nullp(x: Any) -> bool:
     """Return True if x is nil"""
-    if isinstance(x, Symbol):
-        return "nil" == x.value
-    if x is None:
-        return True
-    if isinstance(x, ConsCell):
-        if x.head is None and x.tail is None:
+    match x:
+        case None:
             return True
-        return not bool(x)
-    return x is NIL
+        case Symbol("nil"):
+            return True
+        case ConsCell(None, None):
+            return True
+        case _:
+            return False
 
 
 class Environment:
@@ -307,23 +323,6 @@ class Environment:
     def get_depth(self) -> int:
         """Return the depth of nested Environments"""
         return self.level
-
-
-class Function:
-    """A Function is a callable code object"""
-
-    def __init__(self, args, body, environment) -> None:
-        assert isinstance(environment, (dict, Environment))
-        assert isinstance(args, (list, tuple, ConsCell))
-        assert isinstance(body, ConsCell)
-
-        self.env = environment
-        self.args = args
-        self.body = body
-
-    # Eigentlich muss ich noch dingsen...
-    def __call__(self, *args):
-        """Call the function with the given arguments"""
 
 
 # Local Variables: #
