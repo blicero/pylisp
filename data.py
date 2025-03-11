@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 22:21:33 krylon>
+# Time-stamp: <2025-03-11 15:31:57 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -76,6 +76,9 @@ class Symbol:
         if not isinstance(other, Symbol):
             return False
         return self.value.upper() == other.value.upper()
+
+    def __hash__(self):
+        return hash(f"Symbol({self.value.upper()})")
 
     def is_keyword(self) -> bool:
         """Return True if self is a keyword symbol (i.e. begins with a colon)"""
@@ -209,6 +212,8 @@ def nullp(x: Union[Symbol, int, float, str, None, ConsCell]) -> bool:
     if x is None:
         return True
     if isinstance(x, ConsCell):
+        if x.head is None and x.tail is None:
+            return True
         return not bool(x)
     return x is NIL
 

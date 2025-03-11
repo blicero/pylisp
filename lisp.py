@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 20:35:47 krylon>
+# Time-stamp: <2025-03-11 15:36:23 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -62,15 +62,15 @@ class LispInterpreter:
         self.gensym_counter = counter
         self.log = common.get_logger(f"{self.__class__}")
 
-    def dbg(self, *args):
+    def dbg(self, *args) -> None:
         """Print a debug message if the debug flag is set."""
         self.log.debug(args[0], *args[1:])
 
-    def warn(self, *args):
+    def warn(self, *args) -> None:
         """Print a warning."""
         self.log.warning(args[0], *args[1:])
 
-    def eval_atom(self, atom, env=None) -> Optional[Union[data.Symbol, str, int, float, data.ConsCell]]:
+    def eval_atom(self, atom, env=None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate an Atom."""
         assert atom is not None, "Atom must not be None."
 
@@ -94,6 +94,8 @@ class LispInterpreter:
                 return x
             case _:
                 raise TypeError(f"Did not expect {atom.__class__}")
+
+        raise error.CantHappenError(f"Don't know how to evaluate {atom.__class__} {atom}")
 
     # Ich muss mir noch überlegen, wie viel von der Sprache ich fest in den
     # Interpreter einbauen bzw. auf der reinen Lisp-Ebene implementieren will.
@@ -363,7 +365,8 @@ class LispInterpreter:
             op = self.eval_expr(lst[0], env)
             if not (isinstance(op, data.ConsCell) and isinstance(op[0], data.Symbol)):
                 return lst
-            if op[0] == 'lambda':
+            if op[0] == data.Symbol('lambda'):
+                self.dbg("Evaluate function call to %s", op)
                 arg_list = data.ConsCell.fromList(
                     [self.eval_expr(x, env) for x in lst.cdr()]) \
                     if not data.nullp(lst.cdr()) \
@@ -378,6 +381,8 @@ class LispInterpreter:
                 #     arg_dict[arg_name] = eval_expr(arg_val, env)
                 while not (data.nullp(formal_args) or data.nullp(arg_list)):
                     arg_name = formal_args.car()
+                    if arg_name is None:
+                        break
                     if arg_name == '&rest':
                         arg_dict[formal_args[1]] = arg_list
                         formal_args = None
@@ -442,7 +447,7 @@ class LispInterpreter:
 
         raise error.LispError(f"List is neither nil nor a Lisp List: {lst}")
 
-    def eval_expr(self, expr, env=None):
+    def eval_expr(self, expr, env=None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
         """Evaluate an expression of arbitrary kind or complexity."""
         assert env is None or isinstance(env, data.Environment)
 
