@@ -1,5 +1,5 @@
 # -*- mode: org; fill-column: 78; -*-
-# Time-stamp: <2025-03-11 15:36:57 krylon>
+# Time-stamp: <2025-03-11 20:19:28 krylon>
 #
 #+TAGS: internals(i) ui(u) bug(b) feature(f)
 #+TAGS: database(d) design(e), meditation(m)
@@ -8,7 +8,7 @@
 #+TODO: MEDITATE(m) PLANNING(p) | SUSPENDED(s)
 #+PRIORITIES: A G D
 
-* kryLisp [6/7]
+* kryLisp [6/8]
   :PROPERTIES:
   :COOKIE_DATA: todo recursive
   :VISIBILITY: children
@@ -16,23 +16,25 @@
   A naive Lisp interpreter, written in Python.
 ** Clocktable
    #+BEGIN: clocktable :scope file :maxlevel 255 :emphasize t
-   #+CAPTION: Clock summary at [2025-03-11 Di 15:36]
-   | Headline                | Time    |         |       |      |
-   |-------------------------+---------+---------+-------+------|
-   | *Total time*            | *15:49* |         |       |      |
-   |-------------------------+---------+---------+-------+------|
-   | *kryLisp [6/7]*         | *15:49* |         |       |      |
-   | \_  /Components [2/3]/  |         | /15:49/ |       |      |
-   | \_    Parser [1/1]      |         |         |  5:36 |      |
-   | \_      Ditch the Atom  |         |         |       | 0:41 |
-   | \_    Interpreter [0/0] |         |         | 10:13 |      |
+   #+CAPTION: Clock summary at [2025-03-11 Di 20:19]
+   | Headline                  | Time    |         |       |      |      |
+   |---------------------------+---------+---------+-------+------+------|
+   | *Total time*              | *17:40* |         |       |      |      |
+   |---------------------------+---------+---------+-------+------+------|
+   | *kryLisp [6/8]*           | *17:40* |         |       |      |      |
+   | \_  /Components [2/4]/    |         | /17:40/ |       |      |      |
+   | \_    Parser [1/1]        |         |         |  5:36 |      |      |
+   | \_      Ditch the Atom    |         |         |       | 0:41 |      |
+   | \_    Interpreter [0/1]   |         |         | 12:04 |      |      |
+   | \_      Refactoring [0/1] |         |         |       | 1:51 |      |
+   | \_        Simplify        |         |         |       |      | 1:51 |
    #+END:
 ** Features [0/0]
    :PROPERTIES:
    :COOKIE_DATA: todo recursive
    :VISIBILITY: children
    :END:
-** Components [2/3]
+** Components [2/4]
    :PROPERTIES:
    :COOKIE_DATA: todo recursive
    :VISIBILITY: children
@@ -55,7 +57,7 @@
      :END:
      The Atom type was a mistake, I should ditch it, and use plain str, int,
      float, and data.Symbol.
-*** TODO Interpreter [0/0]
+*** TODO Interpreter [0/1]
     :PROPERTIES:
     :COOKIE_DATA: todo recursive
     :VISIBILITY: children
@@ -65,6 +67,19 @@
     CLOCK: [2025-03-08 Sa 16:24]--[2025-03-08 Sa 22:49] =>  6:25
     CLOCK: [2024-05-20 Mo 14:29]--[2024-05-20 Mo 17:06] =>  2:37
     :END:
+**** Refactoring [0/1]
+     :PROPERTIES:
+     :COOKIE_DATA: todo recursive
+     :VISIBILITY: children
+     :END:
+***** TODO Simplify
+      :LOGBOOK:
+      CLOCK: [2025-03-11 Di 18:27]--[2025-03-11 Di 20:18] =>  1:51
+      :END:
+      Right now, the interpreter is a long-winded, tangled mess of
+      if-statements.
+      I want to replace those, as far as feasible, with match-statements and
+      lookup tables.
 ** Bugs [4/4]
    :PROPERTIES:
    :COOKIE_DATA: todo recursive
