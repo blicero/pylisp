@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-11 20:14:02 krylon>
+# Time-stamp: <2025-09-10 23:31:15 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -275,13 +275,11 @@ class Environment:
     # in dem eine Variable mit dem angegebenen Namen existiert, und die dann
     # darin speichern...
     def __setitem__(self, key: Union[str, Symbol], value) -> None:
-        assert isinstance(key, (Symbol, str))
-
-        if isinstance(key, Symbol):
-            assert isinstance(key.value, str)
-            key = key.value
-
-        key = key.upper()
+        match key:
+            case str(x):
+                key = key.upper()
+            case Symbol(x):
+                key = x.upper()
 
         env: Environment = self
         while (env.parent is not None) and (key not in env.data):

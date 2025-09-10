@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-11 20:17:11 krylon>
+# Time-stamp: <2025-09-10 23:29:54 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -320,7 +320,7 @@ class LispInterpreter:
                 return res
             case data.Symbol("*"):
                 assert lst is not None
-                return reduce(operator.mul, [self.eval_expr(x, env) for x in lst.cdr()])
+                return reduce(operator.mul, [self.eval_expr(x, env) for x in lst])
             case data.Symbol("/"):
                 try:
                     return reduce(operator.truediv, [self.eval_expr(x, env) for x in form.cdr()])
@@ -463,10 +463,9 @@ class LispInterpreter:
                 return lst
             case data.Symbol("defun"):
                 assert lst is not None
-                assert len(lst.cdr()) >= 3, \
-                    "A Function definition needs at least three arguments (name, arglist, body)"
-                lst = lst.cdr()
                 assert env is not None
+                assert len(lst) >= 3, \
+                    f"A Function definition needs at least three arguments (name, arglist, body), but I got {len(lst)}: {lst}"
                 env.get_global()[lst[0]] = data.ConsCell(data.Symbol("lambda"), lst.cdr())
                 return lst[0]
             case data.Symbol("defmacro"):
