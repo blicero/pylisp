@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-09-11 18:09:45 krylon>
+# Time-stamp: <2025-09-11 18:24:46 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -127,6 +127,8 @@ class ConsCell:
         self.tail = cdr
 
     def __len__(self) -> int:
+        if self.head is None and self.tail is None:
+            return 0
         cnt: int = 1
         node: ConsCell = self
         while node.tail is not None:
@@ -147,6 +149,23 @@ class ConsCell:
             else:
                 yield x
                 break
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, ConsCell):
+            if other is None or other == NIL:
+                return self.head is None and self.tail is None
+            return False
+
+        if len(self) != len(other):
+            return False
+
+        for i in range(len(self)):  # pylint: disable-msg=C0200
+            a = self[i]
+            b = other[i]
+            if a != b:
+                return False
+
+        return True
 
     def __nonzero__(self) -> bool:
         return (self.head is not None) or (self.tail is not None)

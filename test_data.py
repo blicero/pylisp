@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-09-11 18:10:46 krylon>
+# Time-stamp: <2025-09-11 18:27:45 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -81,6 +81,29 @@ class TestAtom(unittest.TestCase):
         for c in test_cases:
             self.assertEqual(c[0] == c[1], c[2], f"(eq {c[0]} {c[1]})? Expected {c[2]}")
 
+
+class TestCons(unittest.TestCase):
+    """Test cons cells"""
+
+    def test_01_basics(self) -> None:
+        """Test some really basic assumptions."""
+        lst = data.ConsCell.fromList([1, 2, 3, 4, 5])
+        self.assertEqual(len(lst), 5)
+        self.assertEqual(str(lst), "(1 2 3 4 5)")
+        self.assertNotEqual(lst, data.NIL)
+
+        empty = data.ConsCell(None, None)
+        self.assertEqual(len(empty), 0)
+        self.assertEqual(empty, data.NIL)
+        self.assertEqual(empty, data.EMPTY_LIST)
+
+        l1 = data.ConsCell.fromList([1, 2, 3, 4, 5])
+        l2 = data.ConsCell.fromList([1, 2, 3, 4, 5])
+        l3 = data.ConsCell.fromList([data.Symbol(x) for x in data.qw("lambda sigma delta")])
+
+        self.assertEqual(l1, l2)
+        self.assertEqual(l2, l1)
+        self.assertNotEqual(l1, l3)
 
 # Local Variables: #
 # python-indent: 4 #
