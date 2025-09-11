@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-09-10 23:29:54 krylon>
+# Time-stamp: <2025-09-11 17:33:40 krylon>
 #
 # /data/code/python/krylisp/lisp.py
 # created on 20. 05. 2024
@@ -172,7 +172,7 @@ class LispInterpreter:
     #
     # Freitag, 08. 10. 2010, 01:36
     # Ich glaube, ich muss progn als special form implementieren!!!
-    def eval_list(self, lst: Optional[data.ConsCell], env=None) -> Optional[Union[data.Symbol, data.ConsCell, data.Function, int, float, str]]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+    def eval_list(self, lst: Optional[data.ConsCell], env=None) -> Optional[Union[data.Symbol, data.ConsCell, data.Function, int, float, str]]:  # pylint: disable-msg=R0911,R0912,C0301 # noqa: E501
         """Evaluate a list."""
         assert env is None or isinstance(env, data.Environment)
         self.dbg("Evaluating list %s", lst)
@@ -284,7 +284,7 @@ class LispInterpreter:
 
         raise error.LispError(f"List is neither nil nor a Lisp List: {lst}")
 
-    def eval_special(self, form: data.ConsCell, env: Optional[data.Environment] = None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912 # noqa: E501
+    def eval_special(self, form: data.ConsCell, env: Optional[data.Environment] = None) -> Union[data.Symbol, data.ConsCell, data.Function, int, float, str]:  # pylint: disable-msg=R0911,R0912,C0301 # noqa: E501
         """Evaluate a special form"""
         assert is_special(form.head)
         assert isinstance(form.head, data.Symbol)
