@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-09-10 23:31:15 krylon>
+# Time-stamp: <2025-09-11 18:09:45 krylon>
 #
 # /data/code/python/krylisp/data.py
 # created on 17. 05. 2024
@@ -91,6 +91,11 @@ class Symbol:
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Symbol):
+            if self.value.upper() == "NIL":
+                if other is None:
+                    return True
+                if other == EMPTY_LIST:
+                    return True
             return False
         return self.value.upper() == other.value.upper()
 

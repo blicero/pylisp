@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 19:20:00 krylon>
+# Time-stamp: <2025-09-11 18:10:46 krylon>
 #
 # /data/code/python/krylisp/test_data.py
 # created on 18. 05. 2024
@@ -49,6 +49,20 @@ class TestBasics(unittest.TestCase):
         for c in test_cases:
             self.assertEqual(data.listp(c[0]), c[1])
 
+    def test_03_is_atomic(self) -> None:
+        """Test is_atomic"""
+        test_cases: Final[list[tuple[Any, bool]]] = [
+            (None, False),
+            (42, True),
+            (3.141592, True),
+            ("Wer das liest, ist doof.", True),
+            (data.Symbol("LAMBDA"), True),
+            (data.ConsCell(data.Symbol("LAMBDA"), None), False),
+        ]
+
+        for c in test_cases:
+            self.assertEqual(data.is_atomic(c[0]), c[1])
+
 
 class TestAtom(unittest.TestCase):
     """Test Atoms"""
@@ -59,10 +73,14 @@ class TestAtom(unittest.TestCase):
             (data.Symbol("peter"), data.Symbol("peter"), True),
             (data.Symbol("PETER"), data.Symbol("peter"), True),
             (data.Symbol("PETER"), 3, False),
+            (data.Symbol("LAMBDA"), data.Symbol("ABOBO"), False),
+            (data.NIL, data.EMPTY_LIST, True),
+            (data.NIL, None, True),
         ]
 
         for c in test_cases:
-            self.assertEqual(c[0] == c[1], c[2])
+            self.assertEqual(c[0] == c[1], c[2], f"(eq {c[0]} {c[1]})? Expected {c[2]}")
+
 
 # Local Variables: #
 # python-indent: 4 #
