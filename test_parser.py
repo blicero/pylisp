@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-10 19:00:10 krylon>
+# Time-stamp: <2025-09-11 18:50:57 krylon>
 #
 # /data/code/python/krylisp/test_parser.py
 # created on 19. 05. 2024
@@ -33,6 +33,38 @@ class TestParser(unittest.TestCase):
             ("31", 31, False),
             ("+", data.Symbol("+"), False),
             ("", data.Symbol("nil"), False),
+            ("\"lambda\"", "lambda", False),
+            (":seven", data.Symbol(":SEVEN"), False),
+            ("3.141592", 3.141592, False),
+            ("-42", -42, False),
+            ("'peter", data.ConsCell(data.Symbol("quote"),
+                                     data.ConsCell(data.Symbol("peter"), None)), False),
+        ]
+
+        for c in test_cases:
+            if c[2]:
+                with self.assertRaises(parser.ParseError):
+                    _ = parser.parse_string(c[0], True)
+            else:
+                try:
+                    res = parser.parse_string(c[0], True)
+                except Exception as err:  # pylint: disable-msg=W0718
+                    msg: str = "\n".join(traceback.format_exception(err))
+                    self.fail(f"Failed to parse '{c[0]}': {msg}")
+                else:
+                    if c[1] is None:
+                        self.assertIsNone(res)
+                    else:
+                        self.assertEqual(res, c[1])
+
+    def test_02_lists(self) -> None:
+        """Test parsing lists."""
+        test_cases: Final[list[tuple[str, Optional[data.ConsCell], bool]]] = [
+            ("(1 2 3)", data.ConsCell.fromList([1, 2, 3]), False),
+            ("()", data.ConsCell(None, None), False),
+            ("(1 2 3 (4 5 6) 7 8 9)",
+             data.ConsCell.fromList([1, 2, 3, data.ConsCell.fromList([4, 5, 6]), 7, 8, 9]),
+             False),
         ]
 
         for c in test_cases:
