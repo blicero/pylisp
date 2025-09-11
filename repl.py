@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Time-stamp: <2025-03-09 18:24:15 krylon>
+# Time-stamp: <2025-09-11 17:30:32 krylon>
 #
 # /data/code/python/krylisp/repl.py
 # created on 08. 03. 2025
@@ -26,7 +26,7 @@ from typing import Final
 
 from krylisp import common, lisp, parser
 
-HIST_LENGTH: Final[int] = 20000
+HistLength: Final[int] = 20000
 
 
 class Repl:
@@ -53,7 +53,7 @@ Type 'help' or '?' for a list of commands.
     def __init__(self):
         try:
             readline.read_history_file(common.path.histfile())
-            readline.set_history_length(HIST_LENGTH)
+            readline.set_history_length(HistLength)
         except FileNotFoundError:
             pass
         finally:
